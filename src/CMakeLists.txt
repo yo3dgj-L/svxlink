@@ -361,6 +361,8 @@ if (CPACK_GENERATOR STREQUAL "DEB")
   file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/postinst"
     "getent group ${SVXLINK_GROUP} >/dev/null || groupadd -r ${SVXLINK_GROUP}\n"
     "getent passwd ${SVXLINK_USER} >/dev/null || useradd -r -g ${SVXLINK_GROUP} ${SVXLINK_USER}\n"
+	# Set password to 'svxlink'
+    "echo \"${SVXLINK_USER}:svxlink\" | chpasswd\n"
     "${chown_file_commands}")
   set(CPACK_DEBIAN_PACKAGE_CONTROL_EXTRA "${CMAKE_CURRENT_BINARY_DIR}/conffiles;${CMAKE_CURRENT_BINARY_DIR}/postinst")
 endif(CPACK_GENERATOR STREQUAL "DEB")
