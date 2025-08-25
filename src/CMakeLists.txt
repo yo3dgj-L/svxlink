@@ -366,9 +366,10 @@ if (CPACK_GENERATOR STREQUAL "DEB")
 endif(CPACK_GENERATOR STREQUAL "DEB")
 include(GNUInstallDirs)
 
+# Install status_message_ip.py directly into /usr/bin
 install(PROGRAMS
   ${CMAKE_CURRENT_SOURCE_DIR}/svxlink/scripts/status_message_ip.py
-  DESTINATION ${CMAKE_INSTALL_BINDIR}
+  DESTINATION /usr/bin
   RENAME status_message_ip
 )
 
