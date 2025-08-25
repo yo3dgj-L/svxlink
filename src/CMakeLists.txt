@@ -374,13 +374,6 @@ include(GNUInstallDirs)
 install(PROGRAMS
   ${CMAKE_CURRENT_SOURCE_DIR}/svxlink/scripts/status_message_ip.py
   DESTINATION /usr/bin
-  RENAME status_message_ip
-)
-
-# Install profile directly into /etc
-install(PROGRAMS
-  ${CMAKE_CURRENT_SOURCE_DIR}/svxlink/scripts/profile
-  DESTINATION /etc
   #RENAME status_message_ip
 )
 
@@ -401,4 +394,26 @@ install(CODE "
   )
 ")
 
+set(SOUNDS_URL "https://github.com/sm0svx/svxlink-sounds-en_US-heather/releases/download/14.08/svxlink-sounds-en_US-heather-16k-13.12.tar.bz2")
+set(SOUNDS_ARCHIVE "${CMAKE_BINARY_DIR}/svxlink-sounds-en_US-heather-16k-13.12.tar.bz2")
+set(SOUNDS_DIR "/opt/rolink/share/svxlink/sounds")
+
+# Download
+file(DOWNLOAD ${SOUNDS_URL} ${SOUNDS_ARCHIVE}
+     SHOW_PROGRESS EXPECTED_HASH MD5=7c9c27534cfad59399f8f1c9e12d869c)
+
+# Extract during install
+install(CODE "
+  message(STATUS \"Installing sounds...\")
+  execute_process(COMMAND \${CMAKE_COMMAND} -E make_directory ${SOUNDS_DIR})
+  execute_process(COMMAND tar xvjf ${SOUNDS_ARCHIVE} -C ${SOUNDS_DIR})
+  execute_process(COMMAND \${CMAKE_COMMAND} -E create_symlink en_US-heather-16k ${SOUNDS_DIR}/en_US)
+")
+
+Install profile directly into //opt/rolink/share/svxlink/sounds/en_US-heather-16k/Core
+install(PROGRAMS
+ ${CMAKE_CURRENT_SOURCE_DIR}/svxlink/scripts/sounds/*.wav
+  DESTINATION /opt/rolink/share/svxlink/sounds/en_US-heather-16k/Core
+  #RENAME status_message_ip
+)
 include(CPack)
