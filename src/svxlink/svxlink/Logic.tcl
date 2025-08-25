@@ -519,6 +519,23 @@ proc dtmf_cmd_received {cmd} {
   #  return 1
   #}
 
+# Example: Custom command executed when DTMF 99 is received
+       if {$cmd == "99"} {
+           printInfo "Executing external command"
+          playMsg "Core" "proxy_enable"
+         exec ls &
+        return 1
+       }
+ 
+# Example: Custom command executed when DTMF 91 is received
+     if {$cmd == "91"} {
+         printInfo "Executing external command"
+     playMsg "Core" "proxy_disable"
+    exec ls &
+    return 1
+  }
+
+
   return 0
 }
 
