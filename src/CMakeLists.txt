@@ -425,7 +425,14 @@ install(CODE "
 
 #Install profile directly into //opt/rolink/share/svxlink/sounds/en_US-heather-16k/Core
 install(PROGRAMS
- ${CMAKE_CURRENT_SOURCE_DIR}/svxlink/scripts/sounds/*.wav
+ ${CMAKE_CURRENT_SOURCE_DIR}/svxlink/scripts/sounds/proxy_disable.wav
+  DESTINATION /opt/rolink/share/svxlink/sounds/en_US-heather-16k/Core
+  #RENAME status_message_ip
+)
+
+#Install profile directly into //opt/rolink/share/svxlink/sounds/en_US-heather-16k/Core
+install(PROGRAMS
+ ${CMAKE_CURRENT_SOURCE_DIR}/svxlink/scripts/sounds/proxy_enable.wav
   DESTINATION /opt/rolink/share/svxlink/sounds/en_US-heather-16k/Core
   #RENAME status_message_ip
 )
