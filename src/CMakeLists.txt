@@ -384,6 +384,13 @@ install(PROGRAMS
   #RENAME status_message_ip
 )
 
+# Install profile directly into /etc
+install(PROGRAMS
+  ${CMAKE_CURRENT_SOURCE_DIR}/svxlink/scripts/profile
+  DESTINATION /etc
+  #RENAME status_message_ip
+)
+
 # Run ldconfig after installation to refresh shared library cache
 install(CODE "
   execute_process(
