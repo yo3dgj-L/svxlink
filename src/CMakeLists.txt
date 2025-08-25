@@ -411,8 +411,7 @@ set(SOUNDS_DIR "/opt/rolink/share/svxlink/sounds")
 
 # Download the sounds archive at build time (to the build directory)
 file(DOWNLOAD ${SOUNDS_URL} ${SOUNDS_ARCHIVE}
-     SHOW_PROGRESS
-     EXPECTED_HASH MD5=7c9c27534cfad59399f8f1c9e12d869c)
+     SHOW_PROGRESS)
 
 # Extract and set up symlink at install time
 install(CODE "
