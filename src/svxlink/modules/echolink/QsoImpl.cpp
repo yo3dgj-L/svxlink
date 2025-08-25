@@ -9,7 +9,7 @@ EchoLink Qso.
 
 \verbatim
 A module (plugin) for the multi purpose tranciever frontend system.
-Copyright (C) 2004-2025 Tobias Blomberg / SM0SVX
+Copyright (C) 2004-2019 Tobias Blomberg / SM0SVX
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -58,7 +58,10 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 #include <MsgHandler.h>
 #include <EventHandler.h>
-
+/* includes for function sendMessageToExternalServer*/
+#include <sys/socket.h>
+#include <arpa/inet.h>
+#include <unistd.h>
 
 /****************************************************************************
  *
@@ -155,7 +158,7 @@ QsoImpl::QsoImpl(const StationData &station, ModuleEchoLink *module)
   bool use_gsm_only = false;
   if (cfg.getValue(cfg_name, "USE_GSM_ONLY", use_gsm_only) && use_gsm_only)
   {
-    std::cout << module->cfgName() << ": Using GSM codec only" << std::endl;
+    cout << module->name() << ": Using GSM codec only\n";
     m_qso.setUseGsmOnly();
   }
 
@@ -175,23 +178,15 @@ QsoImpl::QsoImpl(const StationData &station, ModuleEchoLink *module)
     return;
   }
   m_qso.setLocalInfo(description);
-
+  
   string event_handler_script;
-  if (cfg.getValue(module->logicName(), "EVENT_HANDLER", event_handler_script))
+  if (!cfg.getValue(module->logicName(), "EVENT_HANDLER", event_handler_script))
   {
-    std::size_t slashpos = event_handler_script.find_last_of("/");
-    event_handler_script = event_handler_script.substr(0, slashpos);
-    event_handler_script += "/events.d/EchoLinkRemote.tcl";
-  }
-  cfg.getValue(module->cfgName(), "REMOTE_EVENT_HANDLER", event_handler_script);
-  if (event_handler_script.empty())
-  {
-    std::cerr << "*** ERROR: Config variable " << module->logicName()
-              << "/EVENT_HANDLER or " << module->cfgName()
-              << "/REMOTE_EVENT_HANDLER not set" << std::endl;
+    cerr << "*** ERROR: Config variable " << module->logicName()
+      	 << "/EVENT_HANDLER not set\n";
     return;
   }
-
+  
   string idle_timeout_str;
   if (cfg.getValue(cfg_name, "LINK_IDLE_TIMEOUT", idle_timeout_str))
   {
@@ -230,37 +225,33 @@ QsoImpl::QsoImpl(const StationData &station, ModuleEchoLink *module)
   prev_src = 0;
 
   event_handler = new EventHandler(event_handler_script,
-      module->logicName() + ", module " + module->cfgName());
+      module->logicName() + ", module " + module->name());
   event_handler->playFile.connect(
       sigc::bind(mem_fun(*msg_handler, &MsgHandler::playFile), false));
   event_handler->playSilence.connect(
       sigc::bind(mem_fun(*msg_handler, &MsgHandler::playSilence), false));
   event_handler->playTone.connect(
       sigc::bind(mem_fun(*msg_handler, &MsgHandler::playTone), false));
-  event_handler->getConfigValue.connect(
-      sigc::mem_fun(*this, &QsoImpl::getConfigValue));
 
-  event_handler->setVariable("logic_name", module->logicName());
-  event_handler->setVariable("module_name", module->cfgName());
-  event_handler->setVariable("module_type", module->name());
+    // Workaround: Need to set the ID config variable and "logic_name"
+    // variable to load the TCL script.
+  event_handler->processEvent("namespace eval EchoLink {}");
+  event_handler->setVariable("EchoLink::CFG_ID", "0");
+  event_handler->setVariable("logic_name", "Default");
 
-  event_handler->processEvent(
-      std::string("namespace eval ") + module->logicName() + "::" +
-      module->cfgName() + " {}");
-  for (const auto& cfgvar : cfg.listSection(module->cfgName()))
+  event_handler->processEvent("namespace eval Logic {}");
+  string default_lang;
+  if (cfg.getValue(cfg_name, "DEFAULT_LANG", default_lang))
   {
-    std::string var =
-      module->logicName() + "::" + module->cfgName() + "::CFG_" + cfgvar;
-    std::string value;
-    cfg.getValue(module->cfgName(), cfgvar, value);
-    event_handler->setVariable(var, value);
+    event_handler->setVariable("Logic::CFG_DEFAULT_LANG", default_lang);
   }
-
-  if (!event_handler->initialize())
-  {
-    return;
-  }
-
+  bool remote_rgr_sound = false;
+  cfg.getValue(cfg_name, "REMOTE_RGR_SOUND", remote_rgr_sound);
+  event_handler->setVariable(module->name() + "::CFG_REMOTE_RGR_SOUND",
+                             remote_rgr_sound ? "1" : "0");
+  
+  event_handler->initialize();
+  
   m_qso.infoMsgReceived.connect(mem_fun(*this, &QsoImpl::onInfoMsgReceived));
   m_qso.chatMsgReceived.connect(mem_fun(*this, &QsoImpl::onChatMsgReceived));
   m_qso.stateChange.connect(mem_fun(*this, &QsoImpl::onStateChange));
@@ -286,7 +277,20 @@ QsoImpl::QsoImpl(const StationData &station, ModuleEchoLink *module)
   AudioSource::setHandler(prev_src);
   
   init_ok = true;
-  
+
+  // Start Read MESSAGE_SERVER_IP and MESSAGE_SERVER_PORT from config
+  if (!cfg.getValue(cfg_name, "MESSAGE_SERVER_IP", message_server_ip)) {
+      cerr << "*** ERROR: Config variable " << cfg_name << "/MESSAGE_SERVER_IP not set\n";
+      message_server_ip = "127.0.0.1"; // fallback
+  }
+  std::string port_str;
+  if (!cfg.getValue(cfg_name, "MESSAGE_SERVER_PORT", port_str)) {
+      cerr << "*** ERROR: Config variable " << cfg_name << "/MESSAGE_SERVER_PORT not set\n";
+      message_server_port = 9000; // fallback
+  } else {
+      message_server_port = atoi(port_str.c_str());
+  }
+  // End Read MESSAGE_SERVER_IP and MESSAGE_SERVER_PORT from config
 } /* QsoImpl::QsoImpl */
 
 
@@ -352,9 +356,12 @@ bool QsoImpl::accept(void)
   bool success = m_qso.accept();
   if (success)
   {
-    processEvent("remote_greeting " + remoteCallsign());
+    msg_handler->begin();
+    event_handler->processEvent(string(module->name()) + "::remote_greeting " +
+                                remoteCallsign());
+    msg_handler->end();
   }
-
+  
   return success;
   
 } /* QsoImpl::accept */
@@ -369,18 +376,24 @@ void QsoImpl::reject(bool perm)
   if (success)
   {
     sendChatData("The connection was rejected");
+    msg_handler->begin();
     stringstream ss;
-    ss << "reject_remote_connection " << (perm ? "1" : "0");
-    processEvent(ss.str());
+    ss << module->name() << "::reject_remote_connection "
+       << (perm ? "1" : "0");
+    event_handler->processEvent(ss.str());
+
+    /* Send message to external tcp client */
+    sendMessageToExternalServer(ss.str());
+
+    msg_handler->end();
   }
 } /* QsoImpl::reject */
 
 
 void QsoImpl::setListenOnly(bool enable)
 {
-  event_handler->setVariable(
-      module->logicName() + "::" + module->cfgName() + "::listen_only_active",
-      enable ? "1" : "0");
+  event_handler->setVariable(string(module->name()) + "::listen_only_active",
+                             enable ? "1" : "0");
   if (enable)
   {
     string str("[listen only] ");
@@ -398,7 +411,10 @@ void QsoImpl::squelchOpen(bool is_open)
 {
   if (currentState() == Qso::STATE_CONNECTED)
   {
-    processEvent(std::string("squelch_open ") + (is_open ? "1": "0"));
+    msg_handler->begin();
+    event_handler->processEvent(string(module->name()) + "::squelch_open " +
+         (is_open ? "1": "0"));
+    msg_handler->end();
   }
 } /* QsoImpl::squelchOpen */
 
@@ -461,6 +477,13 @@ void QsoImpl::onInfoMsgReceived(const string& msg)
 	 << msg << endl;
     last_info_msg = msg;
     infoMsgReceived(this, msg);
+
+    /* Send message to external tcp client */
+    std::stringstream log;
+    log << "--- EchoLink info message received from " << remoteCallsign() << " ---\n"
+        << msg;
+    cout << log.str() << endl;
+    sendMessageToExternalServer(log.str());
   }  
 } /* onInfoMsgReceived */
 
@@ -512,13 +535,21 @@ void QsoImpl::onStateChange(Qso::State state)
       	stringstream ss;
 	ss << "disconnected " << remoteCallsign();
       	module->processEvent(ss.str());
+
+        /* Send message to external tcp client */
+	std::stringstream log;
+        log << remoteCallsign() << ": EchoLink QSO state changed to Disconnect";
+        cout << log.str() << "\n";
+        sendMessageToExternalServer(log.str());
       }
       destroy_timer = new Timer(5000);
       destroy_timer->expired.connect(mem_fun(*this, &QsoImpl::destroyMeNow));
       break;
+    
     case Qso::STATE_CONNECTING:
       cout << "CONNECTING\n";
       break;
+
     case Qso::STATE_CONNECTED:
       cout << "CONNECTED\n";
       if (!reject_qso)
@@ -528,15 +559,27 @@ void QsoImpl::onStateChange(Qso::State state)
       	  stringstream ss;
 	  ss << "remote_connected " << remoteCallsign();
       	  module->processEvent(ss.str());
+          /* Send message to external tcp client */
+          std::stringstream log;
+          log << remoteCallsign() << ": EchoLink QSO state changed to Connected";
+          cout << log.str() << "\n";
+          sendMessageToExternalServer(log.str());
 	}
 	else
 	{
           stringstream ss;
           ss << "connected " << remoteCallsign();
           module->processEvent(ss.str());
+         
+	  /* Send message to external tcp client */         
+	  std::stringstream log;
+          log << remoteCallsign() << ": EchoLink QSO state changed to Connected";
+          cout << log.str() << "\n";
+          sendMessageToExternalServer(log.str());
 	}
       }
       break;
+
     case Qso::STATE_BYE_RECEIVED:
       cout << "BYE_RECEIVED\n";
       break;
@@ -562,7 +605,9 @@ void QsoImpl::idleTimeoutCheck(Timer *t)
          << ": EchoLink connection idle timeout. Disconnecting..." << endl;
     module->processEvent("link_inactivity_timeout");
     disc_when_done = true;
-    processEvent("remote_timeout");
+    msg_handler->begin();
+    event_handler->processEvent(string(module->name()) + "::remote_timeout");
+    msg_handler->end();
     if (!msg_handler->isWritingMessage())
     {
       disconnect();
@@ -576,25 +621,45 @@ void QsoImpl::destroyMeNow(Timer *t)
   destroyMe(this);
 } /* destroyMeNow */
 
+/* Function to send all messages also to external tcp client
+ * Only sends if the new message differs from the previous one.
+ */
+void QsoImpl::sendMessageToExternalServer(const std::string &msg) {
+    // De-duplicate consecutive identical messages
+    if (msg == last_message) {
+        return;
+    }
+    last_message = msg;
 
-bool QsoImpl::getConfigValue(const std::string& section, const std::string& tag,
-                             std::string& value)
-{
-  const Config &cfg = module->cfg();
-  return cfg.getValue(section, tag, value, true);
-} /* QsoImpl::getConfigValue */
+    int sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    if (sockfd < 0) {
+        perror("socket");
+        return;
+    }
 
+    struct sockaddr_in serv_addr {};
+    serv_addr.sin_family = AF_INET;
+    serv_addr.sin_port = htons(message_server_port);
 
-void QsoImpl::processEvent(const std::string& event)
-{
-  msg_handler->begin();
-  event_handler->processEvent(
-      module->logicName() + "::" + module->cfgName() + "::" + event);
-  msg_handler->end();
-} /* QsoImpl::processEvent */
+    if (inet_pton(AF_INET, message_server_ip.c_str(), &serv_addr.sin_addr) <= 0) {
+        perror("inet_pton");
+        close(sockfd);
+        return;
+    }
 
+    if (::connect(sockfd, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) < 0) {
+        perror("connect");
+        close(sockfd);
+        return;
+    }
+
+    // Send message + newline
+    std::string out = msg + "\n";
+    send(sockfd, out.c_str(), out.size(), 0);
+
+    close(sockfd);
+}
 
 /*
  * This file has not been truncated
  */
-
