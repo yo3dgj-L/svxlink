@@ -364,5 +364,12 @@ if (CPACK_GENERATOR STREQUAL "DEB")
     "${chown_file_commands}")
   set(CPACK_DEBIAN_PACKAGE_CONTROL_EXTRA "${CMAKE_CURRENT_BINARY_DIR}/conffiles;${CMAKE_CURRENT_BINARY_DIR}/postinst")
 endif(CPACK_GENERATOR STREQUAL "DEB")
+include(GNUInstallDirs)
+
+install(PROGRAMS
+  ${CMAKE_CURRENT_SOURCE_DIR}/svxlink/scripts/status_message_ip.py
+  DESTINATION ${CMAKE_INSTALL_BINDIR}
+  RENAME status_message_ip
+)
 
 include(CPack)
