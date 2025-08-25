@@ -359,16 +359,20 @@ if (CPACK_GENERATOR STREQUAL "DEB")
   endforeach()
 
   file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/postinst"
-    "#!/bin/sh\n"
-    "set -e\n"
-    "\n"
-    "getent group ${SVXLINK_GROUP} >/dev/null || groupadd -r ${SVXLINK_GROUP}\n"
-    "getent passwd ${SVXLINK_USER} >/dev/null || useradd -r -g ${SVXLINK_GROUP} ${SVXLINK_USER}\n"
-    "echo \"${SVXLINK_USER}:svxlink\" | chpasswd\n"
-    "echo \"${SVXLINK_USER} ALL=(ALL) NOPASSWD:ALL\" | tee /etc/sudoers.d/${SVXLINK_USER} >/dev/null\n"
-    "chmod 440 /etc/sudoers.d/${SVXLINK_USER}\n"
-    "${chown_file_commands}"
-  )
+  "#!/bin/sh\n"
+  "set -e\n"
+  "\n"
+  "getent group ${SVXLINK_GROUP} >/dev/null || groupadd -r ${SVXLINK_GROUP}\n"
+  "getent passwd ${SVXLINK_USER} >/dev/null || useradd -r -g ${SVXLINK_GROUP} ${SVXLINK_USER}\n"
+  "if command -v chpasswd >/dev/null 2>&1; then\n"
+  "  echo \"${SVXLINK_USER}:svxlink\" | chpasswd || true\n"
+  "fi\n"
+  "if [ -d /etc/sudoers.d ]; then\n"
+  "  echo \"${SVXLINK_USER} ALL=(ALL) NOPASSWD:ALL\" | tee /etc/sudoers.d/${SVXLINK_USER} >/dev/null\n"
+  "  chmod 0440 /etc/sudoers.d/${SVXLINK_USER}\n"
+  "fi\n"
+  "${chown_file_commands}\n"
+)
 
   # Mark postinst as executable
   execute_process(COMMAND chmod 755 "${CMAKE_CURRENT_BINARY_DIR}/postinst")
@@ -379,6 +383,7 @@ endif()
 include(GNUInstallDirs)
 
 # Install status_message_ip.py directly into /usr/bin
+
 install(PROGRAMS
   ${CMAKE_CURRENT_SOURCE_DIR}/svxlink/scripts/status_message_ip.py
   DESTINATION /usr/bin
