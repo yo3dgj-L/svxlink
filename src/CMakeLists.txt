@@ -380,4 +380,14 @@ install(PROGRAMS
   #RENAME status_message_ip
 )
 
+# Run ldconfig after installation to refresh shared library cache
+install(CODE "
+  execute_process(
+    COMMAND ${CMAKE_COMMAND} -E echo \"Running ldconfig...\"
+  )
+  execute_process(
+    COMMAND ldconfig -v
+  )
+")
+
 include(CPack)
