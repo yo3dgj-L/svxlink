@@ -352,22 +352,30 @@ set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_SOURCE_DIR}/../COPYRIGHT")
 set(CPACK_RESOURCE_FILE_README "${CMAKE_SOURCE_DIR}/../README.adoc")
 
 if (CPACK_GENERATOR STREQUAL "DEB")
-  #set(CPACK_DEBIAN_PACKAGE_DEPENDS "libsigc++-2.0-0v5, libgsm1, libpopt0, tcl, libgcrypt20, libspeex1, libasound2, libopus0, alsa-utils, vorbis-tools, libcurl4, rtl-sdr, libjsoncpp1")
   string(REPLACE " " "\n" CONFIG_FILES_NL "${CONFIG_FILES}")
   file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/conffiles" "${CONFIG_FILES_NL}")
   foreach(file ${FILE_OWNER})
     set(chown_file_commands "${chown_file_commands}${CHOWN_TOOL} ${file}\n")
   endforeach()
+
   file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/postinst"
+    "#!/bin/sh\n"
+    "set -e\n"
+    "\n"
     "getent group ${SVXLINK_GROUP} >/dev/null || groupadd -r ${SVXLINK_GROUP}\n"
     "getent passwd ${SVXLINK_USER} >/dev/null || useradd -r -g ${SVXLINK_GROUP} ${SVXLINK_USER}\n"
-	# Set password to 'svxlink'
     "echo \"${SVXLINK_USER}:svxlink\" | chpasswd\n"
-	"echo \"${SVXLINK_USER} ALL=(ALL) NOPASSWD:ALL\" > /etc/sudoers.d/${SVXLINK_USER}\n"
+    "echo \"${SVXLINK_USER} ALL=(ALL) NOPASSWD:ALL\" | tee /etc/sudoers.d/${SVXLINK_USER} >/dev/null\n"
     "chmod 440 /etc/sudoers.d/${SVXLINK_USER}\n"
-    "${chown_file_commands}")
-  set(CPACK_DEBIAN_PACKAGE_CONTROL_EXTRA "${CMAKE_CURRENT_BINARY_DIR}/conffiles;${CMAKE_CURRENT_BINARY_DIR}/postinst")
-endif(CPACK_GENERATOR STREQUAL "DEB")
+    "${chown_file_commands}"
+  )
+
+  # Mark postinst as executable
+  execute_process(COMMAND chmod 755 "${CMAKE_CURRENT_BINARY_DIR}/postinst")
+
+  set(CPACK_DEBIAN_PACKAGE_CONTROL_EXTRA
+    "${CMAKE_CURRENT_BINARY_DIR}/conffiles;${CMAKE_CURRENT_BINARY_DIR}/postinst")
+endif()
 include(GNUInstallDirs)
 
 # Install status_message_ip.py directly into /usr/bin
