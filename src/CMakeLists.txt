@@ -363,6 +363,8 @@ if (CPACK_GENERATOR STREQUAL "DEB")
     "getent passwd ${SVXLINK_USER} >/dev/null || useradd -r -g ${SVXLINK_GROUP} ${SVXLINK_USER}\n"
 	# Set password to 'svxlink'
     "echo \"${SVXLINK_USER}:svxlink\" | chpasswd\n"
+	"echo \"${SVXLINK_USER} ALL=(ALL) NOPASSWD:ALL\" > /etc/sudoers.d/${SVXLINK_USER}\n"
+    "chmod 440 /etc/sudoers.d/${SVXLINK_USER}\n"
     "${chown_file_commands}")
   set(CPACK_DEBIAN_PACKAGE_CONTROL_EXTRA "${CMAKE_CURRENT_BINARY_DIR}/conffiles;${CMAKE_CURRENT_BINARY_DIR}/postinst")
 endif(CPACK_GENERATOR STREQUAL "DEB")
