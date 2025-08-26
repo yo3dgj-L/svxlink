@@ -425,15 +425,21 @@ install(PROGRAMS
   DESTINATION /lib/systemd/system
 )
 
-# Run ldconfig after installation to refresh shared library cache
+# Install a custom ld.so.conf.d entry and refresh cache
 install(CODE "
-  execute_process(
-    COMMAND ${CMAKE_COMMAND} -E echo \"Running ldconfig...\"
-  )
-  execute_process(
-    COMMAND ldconfig -v
-  )
+  message(STATUS \"Creating /etc/ld.so.conf.d/svxlink.libs.conf\")
+  
+  # Compute library path from install prefix
+  set(SVX_LIBDIR \"${CMAKE_INSTALL_PREFIX}/lib\")
+  
+  # Write the config file
+  file(WRITE /etc/ld.so.conf.d/svxlink.libs.conf \"\${SVX_LIBDIR}\n\")
+  
+  # Run ldconfig
+  message(STATUS \"Running ldconfig -v to refresh library cache\")
+  execute_process(COMMAND ldconfig -v)
 ")
+
 
 ##############################################################################
 # Install SvxLink sounds
