@@ -397,18 +397,32 @@ endif()
 include(GNUInstallDirs)
 
 # Install status_message_ip.py directly into /usr/bin
-
 install(PROGRAMS
   ${CMAKE_CURRENT_SOURCE_DIR}/svxlink/scripts/status_message_ip.py
   DESTINATION /usr/bin
   #RENAME status_message_ip
 )
 
+# Ensure the log directory is created
+install(DIRECTORY DESTINATION /opt/rolink/var/log)
+
+# Install the svxlink.log file into that directory
+install(FILES
+  ${CMAKE_CURRENT_SOURCE_DIR}/svxlink/scripts/svxlink.log
+  DESTINATION /opt/rolink/var/log
+)
+
+
 # Install profile directly into /etc
 install(PROGRAMS
   ${CMAKE_CURRENT_SOURCE_DIR}/svxlink/scripts/profile
   DESTINATION /etc
-  #RENAME status_message_ip
+)
+
+# Install profile directly into /lib/systemd/system
+install(PROGRAMS
+  ${CMAKE_CURRENT_SOURCE_DIR}/svxlink/scripts/svxlink.service
+  DESTINATION /lib/systemd/system
 )
 
 # Run ldconfig after installation to refresh shared library cache
