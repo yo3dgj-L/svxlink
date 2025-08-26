@@ -419,9 +419,16 @@ install(PROGRAMS
   DESTINATION /etc
 )
 
-# Install profile directly into /lib/systemd/system
-install(PROGRAMS
-  ${CMAKE_CURRENT_SOURCE_DIR}/svxlink/scripts/svxlink.service
+# Generate systemd unit file with correct install prefix
+configure_file(
+  ${CMAKE_CURRENT_SOURCE_DIR}/svxlink/scripts/svxlink.service.in
+  ${CMAKE_CURRENT_BINARY_DIR}/svxlink.service
+  @ONLY
+)
+
+# Install generated unit file
+install(FILES
+  ${CMAKE_CURRENT_BINARY_DIR}/svxlink.service
   DESTINATION /lib/systemd/system
 )
 
