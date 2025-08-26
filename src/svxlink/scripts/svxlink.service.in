@@ -12,3 +12,4 @@ TimeoutStopSec=10
 #NotifyAccess=main
 LimitCORE=infinity
 WorkingDirectory=@CMAKE_INSTALL_PREFIX@/svxlink
+
