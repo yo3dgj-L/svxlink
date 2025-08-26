@@ -1,4 +1,9 @@
+[Unit]
+Description=SvxLink ham radio service
+After=network.target
+
 [Service]
+Type=simple
 EnvironmentFile=@CMAKE_INSTALL_PREFIX@/default/svxlink
 PIDFile=${PIDFILE}
 ExecStartPre=-/bin/touch ${LOGFILE}
@@ -8,8 +13,8 @@ ExecReload=/bin/kill -s HUP $MAINPID
 Restart=on-failure
 TimeoutStartSec=60
 TimeoutStopSec=10
-#WatchdogSec=
-#NotifyAccess=main
 LimitCORE=infinity
 WorkingDirectory=@CMAKE_INSTALL_PREFIX@/svxlink
 
+[Install]
+WantedBy=multi-user.target
