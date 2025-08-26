@@ -1,0 +1,17 @@
+# aliases svxlink
+alias svxlog="tail -f /opt/rolink/var/log/svxlink.log"
+alias svxconf="sudo nano /opt/rolink/svxlink/svxlink.conf"
+alias svxstart="sudo systemctl start svxlink"
+alias svxstop="sudo systemctl stop svxlink"
+alias svxstatus="sudo systemctl status svxlink"
+alias svxrestart="sudo systemctl restart svxlink"
+alias down="sudo shutdown now"
+alias restart="sudo reboot now"
+
+
+alias metarconf="sudo nano /opt/rolink/svxlink/svxlink.d/ModuleMetarInfo.conf"
+alias echolinkconf="sudo nano /opt/rolink/svxlink/svxlink.d/ModuleEchoLink.conf"
+alias helpconf="sudo nano /opt/rolink/svxlink/svxlink.d/ModuleHelp.conf"
+
+# udev
+alias reload_udev="sudo udevadm control --reload-rules && sudo udevadm trigger"
