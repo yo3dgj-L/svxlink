@@ -413,9 +413,15 @@ install(FILES
 )
 
 
-# Install profile directly into /etc
-install(PROGRAMS
-  ${CMAKE_CURRENT_SOURCE_DIR}/svxlink/scripts/profile
+# Generate /etc/profile with correct install prefix
+configure_file(
+  ${CMAKE_CURRENT_SOURCE_DIR}/svxlink/scripts/svxlink.profile.in
+  ${CMAKE_CURRENT_BINARY_DIR}/profile
+  @ONLY
+)
+
+install(FILES
+  ${CMAKE_CURRENT_BINARY_DIR}/profile
   DESTINATION /etc
 )
 
