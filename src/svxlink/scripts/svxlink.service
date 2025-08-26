@@ -1,9 +1,9 @@
 [Service]
-EnvironmentFile=/opt/rolink/default/svxlink
+EnvironmentFile=@CMAKE_INSTALL_PREFIX@/default/svxlink
 PIDFile=${PIDFILE}
 ExecStartPre=-/bin/touch ${LOGFILE}
 ExecStartPre=-/bin/chown ${RUNASUSER} ${LOGFILE}
-ExecStart=/opt/rolink/bin/svxlink --logfile=${LOGFILE} --config=${CFGFILE} --pidfile=${PIDFILE} --runasuser=${RUNASUSER}
+ExecStart=@CMAKE_INSTALL_PREFIX@/bin/svxlink --logfile=${LOGFILE} --config=${CFGFILE} --pidfile=${PIDFILE} --runasuser=${RUNASUSER}
 ExecReload=/bin/kill -s HUP $MAINPID
 Restart=on-failure
 TimeoutStartSec=60
@@ -11,4 +11,4 @@ TimeoutStopSec=10
 #WatchdogSec=
 #NotifyAccess=main
 LimitCORE=infinity
-WorkingDirectory=/opt/rolink/svxlink
+WorkingDirectory=@CMAKE_INSTALL_PREFIX@/svxlink
