@@ -358,28 +358,42 @@ if (CPACK_GENERATOR STREQUAL "DEB")
     set(chown_file_commands "${chown_file_commands}${CHOWN_TOOL} ${file}\n")
   endforeach()
 
+  # Write Debian postinst script
   file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/postinst"
-  "#!/bin/sh\n"
-  "set -e\n"
-  "\n"
-  "getent group ${SVXLINK_GROUP} >/dev/null || groupadd -r ${SVXLINK_GROUP}\n"
-  "getent passwd ${SVXLINK_USER} >/dev/null || useradd -r -g ${SVXLINK_GROUP} ${SVXLINK_USER}\n"
-  "if command -v chpasswd >/dev/null 2>&1; then\n"
-  "  echo \"${SVXLINK_USER}:svxlink\" | chpasswd || true\n"
-  "fi\n"
-  "if [ -d /etc/sudoers.d ]; then\n"
-  "  echo \"${SVXLINK_USER} ALL=(ALL) NOPASSWD:ALL\" | tee /etc/sudoers.d/${SVXLINK_USER} >/dev/null\n"
-  "  chmod 0440 /etc/sudoers.d/${SVXLINK_USER}\n"
-  "fi\n"
-  "${chown_file_commands}\n"
-)
+    "#!/bin/sh\n"
+    "set -e\n"
+    "\n"
+    "# Ensure svxlink group exists\n"
+    "getent group ${SVXLINK_GROUP} >/dev/null || groupadd -r ${SVXLINK_GROUP}\n"
+    "\n"
+    "# Ensure svxlink user exists with a login shell\n"
+    "if ! getent passwd ${SVXLINK_USER} >/dev/null; then\n"
+    "  useradd -r -g ${SVXLINK_GROUP} -s /bin/bash ${SVXLINK_USER}\n"
+    "else\n"
+    "  usermod -s /bin/bash ${SVXLINK_USER}\n"
+    "fi\n"
+    "\n"
+    "# Set password to 'svxlink' (requires passwd/chpasswd installed)\n"
+    "if command -v chpasswd >/dev/null 2>&1; then\n"
+    "  echo \"${SVXLINK_USER}:svxlink\" | chpasswd || true\n"
+    "fi\n"
+    "\n"
+    "# Add svxlink to sudoers with NOPASSWD\n"
+    "if [ -d /etc/sudoers.d ]; then\n"
+    "  echo \"${SVXLINK_USER} ALL=(ALL) NOPASSWD:ALL\" > /etc/sudoers.d/${SVXLINK_USER}\n"
+    "  chmod 0440 /etc/sudoers.d/${SVXLINK_USER}\n"
+    "fi\n"
+    "\n"
+    "${chown_file_commands}\n"
+  )
 
-  # Mark postinst as executable
+  # Make postinst executable
   execute_process(COMMAND chmod 755 "${CMAKE_CURRENT_BINARY_DIR}/postinst")
 
   set(CPACK_DEBIAN_PACKAGE_CONTROL_EXTRA
     "${CMAKE_CURRENT_BINARY_DIR}/conffiles;${CMAKE_CURRENT_BINARY_DIR}/postinst")
 endif()
+
 include(GNUInstallDirs)
 
 # Install status_message_ip.py directly into /usr/bin
