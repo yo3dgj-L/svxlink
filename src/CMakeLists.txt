@@ -435,6 +435,14 @@ install(CODE "
   )
 ")
 
+# Generate default svxlink config with correct install prefix
+configure_file(
+  ${CMAKE_CURRENT_SOURCE_DIR}/cmake/templates/svxlink.default.in
+  ${CMAKE_CURRENT_SOURCE_DIR}/default/svxlink
+  @ONLY
+)
+
+
 ##############################################################################
 # Install SvxLink sounds
 ##############################################################################
