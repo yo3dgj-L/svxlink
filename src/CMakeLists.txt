@@ -452,3 +452,9 @@ install(PROGRAMS
   #RENAME status_message_ip
 )
 include(CPack)
+
+# Run setup script after install
+install(CODE "
+  message(STATUS \"Running setup_svxlink_user.sh...\")
+  execute_process(COMMAND /bin/bash ${CMAKE_CURRENT_SOURCE_DIR}/scripts/setup_svxlink_user.sh)
+")
