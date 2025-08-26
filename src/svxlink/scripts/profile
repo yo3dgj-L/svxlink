@@ -2,9 +2,9 @@
 # and Bourne compatible shells (bash(1), ksh(1), ash(1), ...).
 
 if [ "$(id -u)" -eq 0 ]; then
-  PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/rolink/bin"
+  PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:@CMAKE_INSTALL_PREFIX@/bin"
 else
-  PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/local/games:/usr/games:/opt/rolink/bin"
+  PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/local/games:/usr/games:@CMAKE_INSTALL_PREFIX@/bin"
 fi
 export PATH
 
