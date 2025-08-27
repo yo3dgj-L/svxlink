@@ -466,12 +466,14 @@ install(PROGRAMS
   DESTINATION /usr/local/sbin
 )
 
+# Run setup_svxlink_user.sh directly from the source tree during install
 install(CODE "
-  message(STATUS \"Running installed setup_svxlink_user.sh...\")
-  execute_process(COMMAND /bin/bash /usr/local/sbin/setup_svxlink_user.sh
+  message(STATUS \"Running setup_svxlink_user.sh from source...\")
+  execute_process(COMMAND /bin/bash ${CMAKE_CURRENT_SOURCE_DIR}/setup_svxlink_user.sh
                   RESULT_VARIABLE r)
   if(NOT r EQUAL 0)
     message(FATAL_ERROR \"setup_svxlink_user.sh failed with code \${r}\")
   endif()
 ")
+
 
