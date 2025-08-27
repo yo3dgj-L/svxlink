@@ -462,5 +462,5 @@ include(CPack)
 
 install(CODE "
   message(STATUS \"Running setup_svxlink_user.sh...\")
-  execute_process(COMMAND /bin/bash ${CMAKE_CURRENT_SOURCE_DIR}/svxlink/src/setup_svxlink_user.sh)
+  execute_process(COMMAND /bin/bash ${CMAKE_CURRENT_SOURCE_DIR}/setup_svxlink_user.sh)
 ")
