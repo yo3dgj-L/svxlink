@@ -461,7 +461,7 @@ include(CPack)
 
 # Option B: install the script and run the installed copy
 install(PROGRAMS
-  ${CMAKE_CURRENT_SOURCE_DIR}/svxlink/src/svxlink/scripts/setup_svxlink_user.sh
+  ${CMAKE_CURRENT_SOURCE_DIR}/svxlink/scripts/setup_svxlink_user.sh
   DESTINATION /opt/svxlink/src/scripts
 )
 
