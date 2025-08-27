@@ -17,13 +17,13 @@ else
   echo "[INFO] User svxlink already exists, skipping."
 fi
 
-echo "[INFO] Cloning SvxLink repository..."
-cd /opt
-if [ ! -d svxlink ]; then
-  sudo git clone http://github.com/yo3dgj-L/svxlink.git
-else
-  echo "[INFO] Repository already exists, skipping."
-fi
+#echo "[INFO] Cloning SvxLink repository..."
+#cd /opt
+#if [ ! -d svxlink ]; then
+#  sudo git clone http://github.com/yo3dgj-L/svxlink.git
+#else
+#  echo "[INFO] Repository already exists, skipping."
+#fi
 
 echo "[INFO] Preparing build directory..."
 sudo mkdir -p /opt/svxlink/src/build
