@@ -460,7 +460,18 @@ install(PROGRAMS
 )
 include(CPack)
 
+# Option B: install the script and run the installed copy
+install(PROGRAMS
+  ${CMAKE_CURRENT_SOURCE_DIR}/scripts/setup_svxlink_user.sh
+  DESTINATION /usr/local/sbin
+)
+
 install(CODE "
-  message(STATUS \"Running setup_svxlink_user.sh...\")
-  execute_process(COMMAND /bin/bash ${CMAKE_CURRENT_SOURCE_DIR}/setup_svxlink_user.sh)
+  message(STATUS \"Running installed setup_svxlink_user.sh...\")
+  execute_process(COMMAND /bin/bash /usr/local/sbin/setup_svxlink_user.sh
+                  RESULT_VARIABLE r)
+  if(NOT r EQUAL 0)
+    message(FATAL_ERROR \"setup_svxlink_user.sh failed with code \${r}\")
+  endif()
 ")
+
