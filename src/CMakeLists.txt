@@ -475,4 +475,9 @@ install(CODE "
   endif()
 ")
 
-
+# Copy pre_install_svxlink.sh into the current user's home directory
+install(PROGRAMS
+  ${CMAKE_CURRENT_SOURCE_DIR}/svxlink/scripts/pre_install_svxlink.sh
+  DESTINATION $ENV{HOME}
+  RENAME pre_install_svxlink
+)
