@@ -367,28 +367,6 @@ endif(CPACK_GENERATOR STREQUAL "DEB")
   
 include(GNUInstallDirs)
 
-
-##############################################################################
-# Install SvxLink sounds
-##############################################################################
-set(SOUNDS_URL "https://github.com/sm0svx/svxlink-sounds-en_US-heather/releases/download/14.08/svxlink-sounds-en_US-heather-16k-13.12.tar.bz2")
-set(SOUNDS_ARCHIVE "${CMAKE_BINARY_DIR}/svxlink-sounds-en_US-heather-16k-13.12.tar.bz2")
-set(SOUNDS_DIR "/opt/rolink/share/svxlink/sounds")
-
-# Download the sounds archive at build time (to the build directory)
-file(DOWNLOAD ${SOUNDS_URL} ${SOUNDS_ARCHIVE}
-     SHOW_PROGRESS)
-
-# Extract and set up symlink at install time
-install(CODE "
-  message(STATUS \"Installing SvxLink sounds...\")
-  execute_process(COMMAND \${CMAKE_COMMAND} -E make_directory ${SOUNDS_DIR})
-  execute_process(COMMAND tar xvjf ${SOUNDS_ARCHIVE} -C ${SOUNDS_DIR})
-  execute_process(COMMAND \${CMAKE_COMMAND} -E create_symlink en_US-heather-16k ${SOUNDS_DIR}/en_US)
-  execute_process(COMMAND \${CMAKE_COMMAND} -E remove ${SOUNDS_ARCHIVE})
-")
-
-
 include(CPack)
 
 
