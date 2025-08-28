@@ -367,63 +367,6 @@ endif(CPACK_GENERATOR STREQUAL "DEB")
   
 include(GNUInstallDirs)
 
-# Install status_message_ip.py directly into /usr/bin
-install(PROGRAMS
-  ${CMAKE_CURRENT_SOURCE_DIR}/svxlink/scripts/status_message_ip.py
-  DESTINATION /usr/bin
-  #RENAME status_message_ip
-)
-
-# Ensure the log directory is created
-install(DIRECTORY DESTINATION /opt/rolink/var/log)
-
-# Install the svxlink.log file into that directory
-install(FILES
-  ${CMAKE_CURRENT_SOURCE_DIR}/svxlink/scripts/svxlink.log
-  DESTINATION /opt/rolink/var/log
-)
-
-
-# Generate /etc/profile with correct install prefix
-configure_file(
-  ${CMAKE_CURRENT_SOURCE_DIR}/svxlink/scripts/svxlink.profile.in
-  ${CMAKE_CURRENT_BINARY_DIR}/profile
-  @ONLY
-)
-
-install(FILES
-  ${CMAKE_CURRENT_BINARY_DIR}/profile
-  DESTINATION /etc
-)
-
-# Generate systemd unit file with correct install prefix
-configure_file(
-  ${CMAKE_CURRENT_SOURCE_DIR}/svxlink/scripts/svxlink.service.in
-  ${CMAKE_CURRENT_BINARY_DIR}/svxlink.service
-  @ONLY
-)
-
-# Install generated unit file
-install(FILES
-  ${CMAKE_CURRENT_BINARY_DIR}/svxlink.service
-  DESTINATION /lib/systemd/system
-)
-
-# Install a custom ld.so.conf.d entry and refresh cache
-install(CODE "
-  message(STATUS \"Creating /etc/ld.so.conf.d/svxlink.libs.conf\")
-  
-  # Compute library path from install prefix
-  set(SVX_LIBDIR \"${CMAKE_INSTALL_PREFIX}/lib\")
-  
-  # Write the config file
-  file(WRITE /etc/ld.so.conf.d/svxlink.libs.conf \"\${SVX_LIBDIR}\n\")
-  
-  # Run ldconfig
-  message(STATUS \"Running ldconfig -v to refresh library cache\")
-  execute_process(COMMAND ldconfig -v)
-")
-
 
 ##############################################################################
 # Install SvxLink sounds
@@ -445,39 +388,7 @@ install(CODE "
   execute_process(COMMAND \${CMAKE_COMMAND} -E remove ${SOUNDS_ARCHIVE})
 ")
 
-#Install profile directly into //opt/rolink/share/svxlink/sounds/en_US-heather-16k/Core
-install(PROGRAMS
- ${CMAKE_CURRENT_SOURCE_DIR}/svxlink/scripts/sounds/proxy_disable.wav
-  DESTINATION /opt/rolink/share/svxlink/sounds/en_US-heather-16k/Core
-  #RENAME status_message_ip
-)
 
-#Install profile directly into //opt/rolink/share/svxlink/sounds/en_US-heather-16k/Core
-install(PROGRAMS
- ${CMAKE_CURRENT_SOURCE_DIR}/svxlink/scripts/sounds/proxy_enable.wav
-  DESTINATION /opt/rolink/share/svxlink/sounds/en_US-heather-16k/Core
- )
 include(CPack)
 
-# Option B: install the script and run the installed copy
-install(PROGRAMS
-  ${CMAKE_CURRENT_SOURCE_DIR}/svxlink/scripts/setup_svxlink_user.sh
-  DESTINATION /opt/svxlink/src/scripts
-)
 
-# Run setup_svxlink_user.sh directly from the source tree during install
-install(CODE "
-  message(STATUS \"Running setup_svxlink_user.sh from source...\")
-  execute_process(COMMAND /bin/bash ${CMAKE_CURRENT_SOURCE_DIR}/setup_svxlink_user.sh
-                  RESULT_VARIABLE r)
-  if(NOT r EQUAL 0)
-    message(FATAL_ERROR \"setup_svxlink_user.sh failed with code \${r}\")
-  endif()
-")
-
-# Copy pre_install_svxlink.sh into the current user's home directory
-install(PROGRAMS
-  ${CMAKE_CURRENT_SOURCE_DIR}/svxlink/scripts/pre_install_svxlink.sh
-  DESTINATION $ENV{HOME}
-  RENAME pre_install_svxlink
-)
