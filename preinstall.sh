@@ -1,5 +1,4 @@
 #!/bin/bash
-
 clear
 
 if dpkg -s dialog 2>/dev/null | grep -q 'Status: install ok installed'; then
@@ -162,44 +161,46 @@ dialog --title "Preinstall Processing" --infobox "Running make -j4 please wait..
 
 # Run cmake in background
 (
- 	 sudo make -j4 > /dev/null 2>&1
-) &
+  sudo make -j4 2>&1 | \
+  while read -r line; do
+      if [[ "$line" =~ \[[[:space:]]*([0-9]+)%\] ]]; then
+          percent="${BASH_REMATCH[1]}"
+          echo "XXX"
+          echo "$percent"
+          echo "$line"
+          echo "XXX"
+      fi
+  done | dialog --title "make -j4 in Progress" --gauge "Compiling SvxLink, please wait..." 15 70 0
+)
 
-cmake_pid=$!
-
-# Fake progress bar while cmake runs
-{
-    percent=0
-    while kill -0 $cmake_pid 2>/dev/null; do
-        percent=$(( (percent + 1) % 99 ))   # cycle between 0-95%
-        echo $percent
-        sleep 1
-    done
-    echo 100
-} | dialog --title "make -j4 " --gauge "Configuring project, please wait..." 10 60 0
-
+clear
+echo "Build complete!"
 #===================================================================================================
-dialog --title "Preinstall Processing" --infobox "Running make doc please wait...." 10 60  
+
+
+dialog --title "Preinstall processing" --infobox "Running make doc please wait...." 10 60  
 
 # Run cmake in background
 (
- 	 sudo make doc > /dev/null 2>&1
+sudo make doc 2>&1 | \
+while read -r line; do
+   if [[ "$line" =~ \[[[:space:]]*([0-9]+)%\] ]]; then
+        percent="${BASH_REMATCH[1]}"
+        echo "XXX"
+        echo "$percent"
+        echo "$line"
+        echo "XXX"
+   elif [[ "$line" =~ Doxygen ]]; then
+        echo "XXX"
+        echo "100"
+        echo "$line"
+        echo "XXX"
+   fi
+done | dialog --title "make doc in Progress" --gauge "Building documentation, please wait..." 15 70 0
+)
 
-) &
-
-cmake_pid=$!
-
-# Fake progress bar while cmake runs
-{
-    percent=0
-    while kill -0 $cmake_pid 2>/dev/null; do
-        percent=$(( (percent + 5) % 95 ))   # cycle between 0-95%
-        echo $percent
-        sleep 1
-    done
-    echo 100
-} | dialog --title "CMake" --gauge "Configuring project, please wait..." 10 60 0
-
+clear
+echo "Build complete!"
 #==================================================================================================
 
 dialog --title "Preinstall Processing" --infobox "Running make install please wait...." 10 60  
