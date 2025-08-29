@@ -225,6 +225,9 @@ cmake_pid=$!
 } | dialog --title "Running make install " --gauge "Configuring project, please wait..." 10 60 0
 
 
+dialog --title "Preinstall processing" --infobox "Preinstall  complete! now Run /opt/svxlink/./install.sh" 10 60  
+sleep 3
+clear
 
 
 
