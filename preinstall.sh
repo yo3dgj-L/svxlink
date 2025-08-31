@@ -16,7 +16,7 @@ main() {
     run_make
     run_make_doc
     run_make_install
-    setup_sa818_files	
+    change_files
     enable_uart_serial
 
     dialog --title "Preinstall Complete" --msgbox "? Preinstall complete!\n\nNow run:\n$default_install_path/install.sh" 10 60
@@ -247,28 +247,31 @@ enable_uart_serial() {
 }
 
 #=========================================================================================
-setup_sa818_files() {
-    dialog --title "SA818 Setup" --infobox "Setting up SA818 support files...\n\nPlease wait..." 10 60
+change_files() {
+    dialog --title "Change Files" --infobox "make install.sh and sa818_menu executable...\n\nPlease wait..." 10 60
     sleep 1
 
-    local source_base="${default_source_path%/build}"
-    local source_dir="$source_base/svxlink/scripts/sa818"
-    local dest_dir="$default_install_path/share/svxlink/sa818"
+    # Paths
+    local sa818_menu_file="$base_source_path/src/svxlink/scripts/sa818/sa818_menu.sh"
+    local install_file="$base_source_path/install.sh"
 
-    sudo mkdir -p "$dest_dir"
-
-    if [[ -d "$source_dir" ]]; then
-        sudo cp -r "$source_dir/"* "$dest_dir/"
+    # Make sa818_menu.sh executable if it exists
+    if [[ -f "$sa818_menu_file" ]]; then
+        sudo chmod +x "$sa818_menu_file"
     else
-        dialog --title "SA818 Setup" --msgbox "? Source folder not found:\n$source_dir" 10 60
-        return 1
+        dialog --title "Change Files" --msgbox "? File not found:\n$sa818_menu_file" 10 60
     fi
 
-    [[ -f "$dest_dir/sa818_menu.sh" ]] && sudo chmod +x "$dest_dir/sa818_menu.sh"
-    [[ -f "$default_install_path/install.sh" ]] && sudo chmod +x "$default_install_path/install.sh"
+    # Make install.sh executable if it exists
+    if [[ -f "$install_file" ]]; then
+        sudo chmod +x "$install_file"
+    else
+        dialog --title "Change Files" --msgbox "? File not found:\n$install_file" 10 60
+    fi
 
-    dialog --title "SA818 Setup" --msgbox "? SA818 files have been installed:\n\nSource: $source_dir\nDestination: $dest_dir\n\nScripts made executable." 12 60
+    dialog --title "Change Files" --msgbox "? Change Files complete.\n\nChecked files:\n$sa818_menu_file\n$install_file\n\nScripts made executable if found." 12 60
 }
+
 
 #=========================================================================================
 # --- RUN MAIN ---
