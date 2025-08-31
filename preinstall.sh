@@ -7,17 +7,17 @@ default_install_path="/opt/mysvxlink"
 
 #=========================================================================================
 main() {
-    #check_dialog
-    #check_cmake_and_packages
-    #check_libssl
-    #ensure_svxlink_user
-    ask_paths
-    #prepare_build
-    #run_make
-    #run_make_doc
-    #run_make_install
-         setup_sa818_files	
-    #enable_uart_serial
+    check_dialog
+    ask_paths   # moved here
+    check_cmake_and_packages
+    check_libssl
+    ensure_svxlink_user
+    prepare_build
+    run_make
+    run_make_doc
+    run_make_install
+    setup_sa818_files	
+    enable_uart_serial
 
     dialog --title "Preinstall Complete" --msgbox "? Preinstall complete!\n\nNow run:\n$default_install_path/install.sh" 10 60
     clear
@@ -100,20 +100,43 @@ ensure_svxlink_user() {
 
 #=========================================================================================
 ask_paths() {
-    # Ask source path
-    install_path_source=$(dialog --title "SvxLink Sources" \
-        --inputbox "Enter path where SvxLink sources/build are:" 10 60 "$default_source_path" \
-        3>&1 1>&2 2>&3 3>&-)
-    [[ $? -ne 0 ]] && exit 1
+    while true; do
+        # Ask source path
+        install_path_source=$(dialog --title "SvxLink Sources" \
+            --inputbox "Enter path where SvxLink sources/build are:" 10 60 "$default_source_path" \
+            3>&1 1>&2 2>&3 3>&-)
+        [[ $? -ne 0 ]] && exit 1
 
-    # Ask install path
-    install_path_svxlink=$(dialog --title "SvxLink Installation Path" \
-        --inputbox "Enter where SvxLink must be installed:" 10 60 "$default_install_path" \
-        3>&1 1>&2 2>&3 3>&-)
-    [[ $? -ne 0 ]] && exit 1
+        # Ask install path
+        install_path_svxlink=$(dialog --title "SvxLink Installation Path" \
+            --inputbox "Enter where SvxLink must be installed:" 10 60 "$default_install_path" \
+            3>&1 1>&2 2>&3 3>&-)
+        [[ $? -ne 0 ]] && exit 1
 
-    sudo mkdir -p "$install_path_source"
-    cd "$install_path_source"
+        # Extract base_source_path ? only first two directories
+        base_source_path=$(echo "$install_path_source" | awk -F/ '{print "/"$2"/"$3}')
+
+        # Confirmation dialog
+        dialog --title "Confirm Paths" --yesno "You have chosen:\n\nSource Path:\n$install_path_source\n\nInstall Path:\n$install_path_svxlink\n\nBase Path:\n$base_source_path\n\nAre you sure you want to continue?" 18 60
+
+        if [[ $? -eq 0 ]]; then
+            # Yes ? proceed
+            sudo mkdir -p "$install_path_source"
+            cd "$install_path_source"
+
+            # Write paths to install_path.ini
+            ini_file="$base_source_path/install_path.ini"
+            sudo mkdir -p "$base_source_path"
+            {
+                echo "source_path=$install_path_source"
+                echo "install_path=$install_path_svxlink"
+                echo "base_path=$base_source_path"
+            } | sudo tee "$ini_file" > /dev/null
+
+            break
+        fi
+        # If No ? loop again
+    done
 }
 
 #=========================================================================================
@@ -200,8 +223,7 @@ run_make_install() {
         echo 100
     } | dialog --title "make install" --gauge "Installing SvxLink..." 10 60 0
 }
-#========================================================================================
-
+#=========================================================================================
 enable_uart_serial() {
     dialog --title "UART Setup" --infobox "Configuring UART and disabling serial console...\n\nPlease wait..." 10 60
     sleep 2
@@ -229,16 +251,12 @@ setup_sa818_files() {
     dialog --title "SA818 Setup" --infobox "Setting up SA818 support files...\n\nPlease wait..." 10 60
     sleep 1
 
-    # Source base path (strip off /build from default_source_path)
     local source_base="${default_source_path%/build}"
-
     local source_dir="$source_base/svxlink/scripts/sa818"
     local dest_dir="$default_install_path/share/svxlink/sa818"
 
-    # Create destination folder
     sudo mkdir -p "$dest_dir"
 
-    # Copy files if source exists
     if [[ -d "$source_dir" ]]; then
         sudo cp -r "$source_dir/"* "$dest_dir/"
     else
@@ -246,19 +264,11 @@ setup_sa818_files() {
         return 1
     fi
 
-    # Make sa818_menu.sh executable
-    if [[ -f "$dest_dir/sa818_menu.sh" ]]; then
-        sudo chmod +x "$dest_dir/sa818_menu.sh"
-    fi
-
-    # Make install.sh executable
-    if [[ -f "$default_install_path/install.sh" ]]; then
-        sudo chmod +x "$default_install_path/install.sh"
-    fi
+    [[ -f "$dest_dir/sa818_menu.sh" ]] && sudo chmod +x "$dest_dir/sa818_menu.sh"
+    [[ -f "$default_install_path/install.sh" ]] && sudo chmod +x "$default_install_path/install.sh"
 
     dialog --title "SA818 Setup" --msgbox "? SA818 files have been installed:\n\nSource: $source_dir\nDestination: $dest_dir\n\nScripts made executable." 12 60
 }
-
 
 #=========================================================================================
 # --- RUN MAIN ---
