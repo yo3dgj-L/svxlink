@@ -472,7 +472,8 @@ run_with_log() {
     fi
 }
 #=========================================================================================
-dialog --title "CM108 Setup" --infobox "Configuring CM108 USB soundcard...\n\nPlease wait..." 10 60
+install_cm108_udev_rule() {
+     dialog --title "CM108 Setup" --infobox "Configuring CM108 USB soundcard...\n\nPlease wait..." 10 60
     sleep 2
 
     # Ensure callsign is available, force lowercase for device name
