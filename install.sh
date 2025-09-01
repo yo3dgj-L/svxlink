@@ -1,4 +1,5 @@
-d#!/bin/bash
+
+#!/bin/bash
 
 # --- GLOBAL ---
 default_source_path=""
@@ -13,27 +14,25 @@ main() {
 
     get_install_path
     dialog --title "Install Path" --msgbox "Installation path detected:\n\n$default_install_path" 10 60
+
     copy_status_message
     update_config_txt
     update_profile
     update_ld_conf
     create_svxlink_service
     create_log_dir
-    create_svxlink_service
-    setup_udev_cm108
     create_svxlink_conf
     create_module_echolink_conf
 
     if [[ "$skip_sa818" -eq 0 ]]; then
-        run_with_log install_sa818_wrapper
-        run_with_log install_sa818_shortcut
-        run_with_log check_serial0_access
-        run_with_log run_sa818_menu
-        run_with_log check_sa818_module || exit 1
-
-        dialog --title "SA818 Setup" --msgbox "? SA818 wrapper, shortcut, and module check completed.\n\nYou can now use:\n  sa818 --help\n  sa818_menu" 12 60
+        install_sa818_wrapper
+        install_sa818_shortcut
+        check_serial0_access
+        run_sa818_menu
+        check_sa818_module || exit 1
+        dialog --title "SA818 Setup" --msgbox "? SA818 configured successfully.\nUse:\n  sa818 --help\n  sa818_menu" 12 60
     else
-        dialog --title "SA818 Skipped" --msgbox "You chose to skip SA818 setup.\n\nSvxLink will be installed without SA818 support." 12 60
+        dialog --title "SA818 Skipped" --msgbox "SA818 support not installed." 10 60
     fi
 
     dialog --title "Done" --msgbox "All operations completed successfully." 8 50
@@ -57,6 +56,7 @@ get_install_path() {
     default_source_path=${default_source_path%/}
     default_install_path=${default_install_path%/}
     default_base_path=${default_base_path%/}
+}
 }#==========================================================================================
 
 copy_status_message() {
