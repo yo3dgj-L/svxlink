@@ -18,9 +18,14 @@ main() {
     run_make_install
     change_files
     enable_uart_serial
-
-    dialog --title "Preinstall Complete" --msgbox "? Preinstall complete!\n\nNow run:\n$default_install_path/install.sh" 10 60
-    clear
+    install_pyserial
+    enable_uart_serial
+    install_serial0_udev_rule
+    check_serial0_access
+    dialog --title "Reboot Required" --msgbox "UART enabled, udev rule installed.\n\nSystem must reboot to apply changes." 12 60
+         sleep 2
+         clear
+    sudo reboot   
 }
 
 #=========================================================================================
@@ -272,7 +277,75 @@ change_files() {
     dialog --title "Change Files" --msgbox "? Change Files complete.\n\nChecked files:\n$sa818_menu_file\n$install_file\n\nScripts made executable if found." 12 60
 }
 
+clear
+#====================================================================================================
 
-#=========================================================================================
+#!/bin/bash
+
+#==========================================================================================
+install_pyserial() {
+    dialog --title "Dependencies" --infobox "Installing Python serial library..." 8 50
+    sudo apt-get update -y
+    sudo apt-get install -y python3-serial
+}
+
+#==========================================================================================
+enable_uart_serial() {
+    dialog --title "UART Setup" --infobox "Configuring UART and disabling serial console..." 10 60
+    sleep 2
+
+    # Enable UART in config.txt
+    sudo sed -i '/enable_uart=/d' /boot/firmware/config.txt
+    echo "enable_uart=1" | sudo tee -a /boot/firmware/config.txt >/dev/null
+
+    # Disable serial console login
+    sudo systemctl disable serial-getty@ttyAMA0.service >/dev/null 2>&1
+    sudo systemctl stop serial-getty@ttyAMA0.service >/dev/null 2>&1
+
+    # Force serial0 to map to full UART (disable Bluetooth console)
+    if ! grep -q "dtoverlay=disable-bt" /boot/firmware/config.txt; then
+        echo "dtoverlay=disable-bt" | sudo tee -a /boot/firmware/config.txt >/dev/null
+    fi
+}
+
+#==========================================================================================
+install_serial0_udev_rule() {
+    dialog --title "UART Permissions" --infobox "Installing udev rule for /dev/serial0..." 8 50
+    sleep 2
+
+    cat <<EOF | sudo tee /etc/udev/rules.d/99-serial0.rules >/dev/null
+# Ensure /dev/serial0 is accessible to the 'dialout' group
+KERNEL=="ttyAMA0", SYMLINK+="serial0", GROUP="dialout", MODE="0660"
+KERNEL=="ttyS0",   SYMLINK+="serial0", GROUP="dialout", MODE="0660"
+EOF
+
+    sudo udevadm control --reload-rules
+    sudo udevadm trigger
+}
+
+#==========================================================================================
+check_serial0_access() {
+    dialog --title "UART Check" --infobox "Verifying that /dev/serial0 is accessible..." 8 50
+    sleep 1
+
+    python3 - <<'EOF'
+import serial, sys
+try:
+    ser = serial.Serial("/dev/serial0", 9600, timeout=1)
+    print("OK: /dev/serial0 opened successfully at 9600 baud")
+    ser.close()
+except Exception as e:
+    print("ERROR: Could not open /dev/serial0:", e)
+    sys.exit(1)
+EOF
+    if [[ $? -ne 0 ]]; then
+        dialog --title "UART Check" --msgbox "? Could not open /dev/serial0 at 9600 baud.\nCheck wiring, udev rules, or group membership." 12 60
+        exit 1
+    else
+        dialog --title "UART Check" --msgbox "? /dev/serial0 is accessible at 9600 baud.\nUART and permissions are OK." 10 60
+    fi
+}
+
+#==========================================================================================
 # --- RUN MAIN ---
 main
