@@ -181,6 +181,21 @@ create_svxlink_conf() {
     fi
     CALLSIGN=${CALLSIGN^^}   # always uppercase
 
+        # --- ?? Auto-detect CM108 USB soundcard here ---
+    CARD_NUM=$(arecord -l | awk '/USB Audio/ {print $2}' | tr -d ':')
+    if [[ -z "$CARD_NUM" ]]; then
+        CARD_NUM=2   # fallback if detection fails
+    fi
+    RX_DEV="alsa:plughw:${CARD_NUM},0"
+    TX_DEV="alsa:plughw:${CARD_NUM},0"
+
+    # Backup if config exists
+    if [[ -f "$conf_file" ]]; then
+        sudo cp "$conf_file" "$conf_file.bak.$(date +%Y%m%d-%H%M%S)"
+    fi
+
+
+
     # Generate fresh config
     sudo tee "$conf_file" >/dev/null <<EOF
 ###############################################################################
@@ -228,7 +243,7 @@ AUDIO_DEV=${RX_DEV}
 AUDIO_CHANNEL=0
 LIMITER_THRESH=-6
 SQL_DET=HIDRAW
-HID_DEVICE=$(echo "$CALLSIGN" | tr '[:upper:]' '[:lower:]')
+HID_DEVICE=/dev/$(echo "$CALLSIGN" | tr '[:upper:]' '[:lower:]')
 HID_SQL_PIN=VOL_DN
 SIGLEV_SLOPE=1
 SIGLEV_OFFSET=0
@@ -473,7 +488,7 @@ run_with_log() {
 }
 #=========================================================================================
 install_cm108_udev_rule() {
-     dialog --title "CM108 Setup" --infobox "Configuring CM108 USB soundcard...\n\nPlease wait..." 10 60
+          dialog --title "CM108 Setup" --infobox "Configuring CM108 USB soundcard...\n\nPlease wait..." 10 60
     sleep 2
 
     # Ensure callsign is available, force lowercase for device name
@@ -503,7 +518,7 @@ EOF
     sudo udevadm control --reload-rules
     sudo udevadm trigger
 
-    dialog --title "CM108 Setup" --msgbox "✅ CM108 rule installed.\n\n• PulseAudio will ignore the device\n• /dev/${callsign_lc} symlink created\n• Using card: plughw:${card_num},0" 15 60
+    dialog --title "CM108 Setup" --msgbox "âœ… CM108 rule installed.\n\nâ€¢ PulseAudio will ignore the device\nâ€¢ /dev/${callsign_lc} symlink created\nâ€¢ Using card: plughw:${card_num},0" 15 60
 }
 
 
