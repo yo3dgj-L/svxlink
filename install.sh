@@ -1,4 +1,4 @@
-#!/bin/bash
+d#!/bin/bash
 
 # --- GLOBAL ---
 default_source_path=""
@@ -26,6 +26,7 @@ main() {
 
     run_with_log install_sa818_wrapper
     run_with_log install_sa818_shortcut
+         run_with_log check_serial0_access
     run_with_log run_sa818_menu
     run_with_log check_sa818_module || exit 1
 
@@ -425,6 +426,31 @@ check_sa818_module() {
     return 0
 }
 #=====================================================================================================
+
+check_serial0_access() {
+    dialog --title "UART Check" --infobox "Verifying that /dev/serial0 is accessible..." 8 50
+    sleep 1
+
+    python3 - <<'EOF'
+import serial, sys
+try:
+    ser = serial.Serial("/dev/serial0", 9600, timeout=1)
+    print("OK: /dev/serial0 opened successfully at 9600 baud")
+    ser.close()
+except Exception as e:
+    print("ERROR: Could not open /dev/serial0:", e)
+    sys.exit(1)
+EOF
+    if [[ $? -ne 0 ]]; then
+        dialog --title "UART Check" --msgbox "? Could not open /dev/serial0 at 9600 baud.\nCheck wiring, udev rules, or group membership." 12 60
+        exit 1
+    else
+        dialog --title "UART Check" --msgbox "? /dev/serial0 is accessible at 9600 baud.\nUART and permissions are OK." 10 60
+    fi
+}
+
+#=====================================================================================================
+
 
 run_with_log() {
     local func="$1"
