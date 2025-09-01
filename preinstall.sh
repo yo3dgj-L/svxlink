@@ -8,11 +8,11 @@ default_install_path="/opt/mysvxlink"
 #=========================================================================================
 main() {
 
-     LOG_DIR="/var/log/svxlink-install"
-     sudo mkdir -p "$LOG_DIR"
-
+    LOG_DIR="/var/log/svxlink-install"
+    sudo mkdir -p "$LOG_DIR"
     check_dialog
     ask_paths   # moved here
+         install_sounds
     ask_sa818_hardware 
     check_cmake_and_packages
     check_libssl
@@ -346,6 +346,35 @@ ask_sa818_hardware() {
     ini_file="$base_source_path/install_path.ini"
     echo "skip_sa818=$SKIP_SA818" | sudo tee -a "$ini_file" > /dev/null
 }
+
+#==========================================================================================
+install_sounds() {
+    dialog --title "Sound Files" --infobox "Installing SvxLink English sound pack...\n\nPlease wait..." 10 60
+    sleep 2
+
+    cd "$default_install_path/share/svxlink/sounds" || {
+        dialog --title "Error" --msgbox "? Could not change directory to $default_install_path/share/svxlink/sounds" 10 60
+        exit 1
+    }
+
+    # Download sound pack
+    sudo wget -q https://github.com/sm0svx/svxlink-sounds-en_US-heather/releases/download/14.08/svxlink-sounds-en_US-heather-16k-13.12.tar.bz2
+
+    # Extract
+    sudo tar xvjf svxlink-sounds-en_US-heather-16k-13.12.tar.bz2 >/dev/null 2>&1
+
+    # Create symlink
+    if [[ -d "en_US-heather-16k" ]]; then
+        sudo ln -sfn en_US-heather-16k en_US
+    fi
+
+    # Cleanup
+    sudo rm -f svxlink-sounds-en_US-heather-16k-13.12.tar.bz2
+
+    dialog --title "Sound Files" --msgbox "? Sound files installed successfully:\n\nPath: $default_install_path/share/svxlink/sounds/en_US" 12 60
+}
+
+
 #==========================================================================================
 # --- RUN MAIN ---
 main
