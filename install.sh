@@ -7,23 +7,27 @@ default_base_path=""
 
 # --- MAIN FLOW (for readability only) ---
 main() {
+
+    LOG_DIR="/var/log/svxlink-install"
+    sudo mkdir -p "$LOG_DIR"
+
     get_install_path
     dialog --title "Install Path" --msgbox "Installation path detected:\n\n$default_install_path" 10 60
+    copy_status_message
+    update_config_txt
+    update_profile
+    update_ld_conf
+    create_svxlink_service
+    create_log_dir
+    create_svxlink_service
+    setup_udev_cm108
+    create_svxlink_conf
+    create_module_echolink_conf
 
-    #copy_status_message
-    #update_config_txt
-    #update_profile
-    #update_ld_conf
-    #create_svxlink_service
-    #create_log_dir
-    #create_svxlink_service
-    #setup_udev_cm108
-    #create_svxlink_conf
-    #create_module_echolink_conf
-    install_sa818_wrapper
-    install_sa818_shortcut
-         run_sa818_menu
-    check_sa818_module || exit 1
+    run_with_log install_sa818_wrapper
+    run_with_log install_sa818_shortcut
+    run_with_log run_sa818_menu
+    run_with_log check_sa818_module || exit 1
 
     dialog --title "SA818 Setup" --msgbox "? SA818 wrapper, shortcut, and module check completed.\n\nYou can now use:\n  sa818 --help\n  sa818_menu" 12 60
           sleep 2
@@ -420,6 +424,25 @@ check_sa818_module() {
     dialog --title "SA818 Check" --msgbox "? SA818 module responded:\n\n$OUTPUT" 15 70
     return 0
 }
+#=====================================================================================================
+
+run_with_log() {
+    local func="$1"
+    shift
+    local logfile="$LOG_DIR/${func}.log"
+
+    echo "=== Running $func at $(date) ===" | sudo tee "$logfile" >/dev/null
+    $func "$@" >> >(sudo tee -a "$logfile") 2>&1
+    local rc=$?
+
+    if [[ $rc -ne 0 ]]; then
+        dialog --title "Error" --msgbox "? $func failed.\n\nSee log:\n$logfile" 12 60
+        exit $rc
+    else
+        echo "=== $func completed OK at $(date) ===" | sudo tee -a "$logfile" >/dev/null
+    fi
+}
+
 #==========================================================================================
 # --- RUN MAIN ---
 main
