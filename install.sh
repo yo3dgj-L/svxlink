@@ -179,6 +179,7 @@ create_svxlink_conf() {
     if [[ -f "$conf_file" ]]; then
         sudo cp "$conf_file" "$conf_file.bak.$(date +%Y%m%d-%H%M%S)"
     fi
+    CALLSIGN=${CALLSIGN^^}   # always uppercase
 
     # Generate fresh config
     sudo tee "$conf_file" >/dev/null <<EOF
