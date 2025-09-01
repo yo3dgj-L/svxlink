@@ -294,8 +294,8 @@ clear
 #==========================================================================================
 install_pyserial() {
     dialog --title "Dependencies" --infobox "Installing Python serial library..." 8 50
-    sudo apt-get update -y
-    sudo apt-get install -y python3-serial
+    sudo apt-get update -y  > /dev/null 2>&1
+    sudo apt-get install -y python3-serial  > /dev/null 2>&1
 }
 
 #==========================================================================================
