@@ -1,4 +1,3 @@
-
 #!/bin/bash
 
 # --- GLOBAL ---
@@ -35,6 +34,8 @@ main() {
         dialog --title "SA818 Skipped" --msgbox "SA818 support not installed." 10 60
     fi
 
+          log install_cm108_udev_rule
+
     dialog --title "Done" --msgbox "All operations completed successfully." 8 50
     clear
     exit 0
@@ -57,7 +58,8 @@ get_install_path() {
     default_install_path=${default_install_path%/}
     default_base_path=${default_base_path%/}
 }
-}#==========================================================================================
+
+#==========================================================================================
 
 copy_status_message() {
     filepath=$(sudo -n find / -type f -name "status_message_ip.py" 2>/dev/null | grep "/svxlink/" | head -n1)
@@ -149,8 +151,6 @@ EOF
 create_log_dir() {
     log_dir="$default_install_path/var/log"
     log_file="$log_dir/svxlink.log"
-create_log_dir
-create_log_dir
     sudo mkdir -p "$log_dir"
     sudo touch "$log_file"
     sudo chown "$USER":"$USER" "$log_file"
@@ -470,6 +470,28 @@ run_with_log() {
         echo "=== $func completed OK at $(date) ===" | sudo tee -a "$logfile" >/dev/null
     fi
 }
+#=========================================================================================
+install_cm108_udev_rule() {
+    dialog --title "CM108 Setup" --infobox "Installing udev rule for CM108 USB soundcard...\n\nThis prevents PulseAudio from grabbing it and creates a stable symlink /dev/<CALLSIGN>." 12 60
+    sleep 2
+
+    # Use CALLSIGN if available, else fallback
+    local callsign="${CALLSIGN:-yo3dgj}"
+
+    cat <<EOF | sudo tee /etc/udev/rules.d/99-cm108.rules >/dev/null
+# Block PulseAudio using CM108 USB soundcard for SvxLink
+ATTRS{idVendor}=="0d8c", ATTRS{idProduct}=="0012", ENV{PULSE_IGNORE}="1"
+
+# Create a stable symlink /dev/$callsign pointing to the CM108 GPIO HID device
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="0d8c", ATTRS{idProduct}=="0012", SYMLINK+="$callsign", MODE="0666"
+EOF
+
+    sudo udevadm control --reload-rules
+    sudo udevadm trigger
+
+    dialog --title "CM108 Setup" --msgbox "? CM108 rule installed.\n\n• PulseAudio will ignore the device\n• /dev/$callsign symlink created\n\nCheck with:\n  ls -l /dev/$callsign" 15 60
+}
+
 
 #==========================================================================================
 # --- RUN MAIN ---
