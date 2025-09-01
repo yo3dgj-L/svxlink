@@ -7,6 +7,10 @@ default_install_path="/opt/mysvxlink"
 
 #=========================================================================================
 main() {
+
+          LOG_DIR="/var/log/svxlink-install"
+         sudo mkdir -p "$LOG_DIR"
+
     check_dialog
     ask_paths   # moved here
     check_cmake_and_packages
@@ -18,10 +22,10 @@ main() {
     run_make_install
     change_files
     enable_uart_serial
-    install_pyserial
-    enable_uart_serial
-    install_serial0_udev_rule
-    check_serial0_access
+    run_with_log install_pyserial
+    run_with_log enable_uart_serial
+    run_with_log install_serial0_udev_rule
+    run_with_log check_serial0_access
     dialog --title "Reboot Required" --msgbox "UART enabled, udev rule installed.\n\nSystem must reboot to apply changes." 12 60
          sleep 2
          clear
@@ -343,6 +347,25 @@ EOF
         exit 1
     else
         dialog --title "UART Check" --msgbox "? /dev/serial0 is accessible at 9600 baud.\nUART and permissions are OK." 10 60
+    fi
+}
+
+#=====================================================================================================
+
+run_with_log() {
+    local func="$1"
+    shift
+    local logfile="$LOG_DIR/${func}.log"
+
+    echo "=== Running $func at $(date) ===" | sudo tee "$logfile" >/dev/null
+    $func "$@" >> >(sudo tee -a "$logfile") 2>&1
+    local rc=$?
+
+    if [[ $rc -ne 0 ]]; then
+        dialog --title "Error" --msgbox "? $func failed.\n\nSee log:\n$logfile" 12 60
+        exit $rc
+    else
+        echo "=== $func completed OK at $(date) ===" | sudo tee -a "$logfile" >/dev/null
     fi
 }
 
