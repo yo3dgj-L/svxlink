@@ -24,16 +24,19 @@ main() {
     create_svxlink_conf
     create_module_echolink_conf
 
-    run_with_log install_sa818_wrapper
-    run_with_log install_sa818_shortcut
-         run_with_log check_serial0_access
-    run_with_log run_sa818_menu
-    run_with_log check_sa818_module || exit 1
+    if [[ "$skip_sa818" -eq 0 ]]; then
+        run_with_log install_sa818_wrapper
+        run_with_log install_sa818_shortcut
+        run_with_log check_serial0_access
+        run_with_log run_sa818_menu
+        run_with_log check_sa818_module || exit 1
 
-    dialog --title "SA818 Setup" --msgbox "? SA818 wrapper, shortcut, and module check completed.\n\nYou can now use:\n  sa818 --help\n  sa818_menu" 12 60
-          sleep 2
+        dialog --title "SA818 Setup" --msgbox "? SA818 wrapper, shortcut, and module check completed.\n\nYou can now use:\n  sa818 --help\n  sa818_menu" 12 60
+    else
+        dialog --title "SA818 Skipped" --msgbox "You chose to skip SA818 setup.\n\nSvxLink will be installed without SA818 support." 12 60
+    fi
+
     dialog --title "Done" --msgbox "All operations completed successfully." 8 50
-         sleep 2
     clear
     exit 0
 }
@@ -46,17 +49,15 @@ get_install_path() {
         sleep 3; clear; return 1
     fi
 
-    # Parse variables from ini file
     default_source_path=$(grep '^source_path=' "$install_file" | cut -d'=' -f2-)
     default_install_path=$(grep '^install_path=' "$install_file" | cut -d'=' -f2-)
     default_base_path=$(grep '^base_path=' "$install_file" | cut -d'=' -f2-)
+    skip_sa818=$(grep '^skip_sa818=' "$install_file" | cut -d'=' -f2-)
 
-    # Strip trailing slashes
     default_source_path=${default_source_path%/}
     default_install_path=${default_install_path%/}
     default_base_path=${default_base_path%/}
-}
-#==========================================================================================
+}#==========================================================================================
 
 copy_status_message() {
     filepath=$(sudo -n find / -type f -name "status_message_ip.py" 2>/dev/null | grep "/svxlink/" | head -n1)
