@@ -10,20 +10,25 @@ main() {
     get_install_path
     dialog --title "Install Path" --msgbox "Installation path detected:\n\n$default_install_path" 10 60
 
-    copy_status_message
-    update_config_txt
-    update_profile
-    update_ld_conf
-    create_svxlink_service
-    create_log_dir
-    enable_svxlink_service
-    check_cm108_usb || exit 1
-    setup_udev_cm108
-    create_svxlink_conf
-    create_module_echolink_conf
-    run_sa818_menu
+    #copy_status_message
+    #update_config_txt
+    #update_profile
+    #update_ld_conf
+    #create_svxlink_service
+    #create_log_dir
+    #create_svxlink_service
+    #setup_udev_cm108
+    #create_svxlink_conf
+    #create_module_echolink_conf
+    install_sa818_wrapper
+    install_sa818_shortcut
+         run_sa818_menu
+    check_sa818_module || exit 1
 
+    dialog --title "SA818 Setup" --msgbox "? SA818 wrapper, shortcut, and module check completed.\n\nYou can now use:\n  sa818 --help\n  sa818_menu" 12 60
+          sleep 2
     dialog --title "Done" --msgbox "All operations completed successfully." 8 50
+         sleep 2
     clear
     exit 0
 }
@@ -66,8 +71,7 @@ copy_status_message() {
 
 #==========================================================================================
 update_profile() {
-    get_install_path || return 1
-
+    
     sudo cp /etc/profile /etc/profile.bak.$(date +%Y%m%d-%H%M%S)
 
     sudo sed -i "s|^  PATH=.*sbin:/bin\"|  PATH=\"/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:$default_install_path/bin\"|" /etc/profile
@@ -85,30 +89,28 @@ Backup saved as /etc/profile.bak.TIMESTAMP" 15 70
 
 #==========================================================================================
 update_ld_conf() {
-    get_install_path || return 1
+    
     conf_file="/etc/ld.so.conf.d/svxlink.libs.conf"
 
     if sudo grep -qx "$default_install_path/lib" "$conf_file" 2>/dev/null; then
         dialog --title "Library Path" --infobox "No changes needed.
 
-$conf_file already contains:
-$default_install_path/lib" 12 60
+                  $conf_file already contains:
+                  $default_install_path/lib" 12 60
         sleep 3
     else
         echo "$default_install_path/lib" | sudo tee "$conf_file" >/dev/null
-        dialog --title "Library Path" --infobox "Created/updated $conf_file with:
-
-$default_install_path/lib
-
-Now running ldconfig ..." 12 60
+        dialog --title "Library Path" --infobox "Created/updated $conf_file with: $default_install_path/lib now running ldconfig ..." 12 60
         sleep 3
         sudo ldconfig -v
     fi
+         dialog --title "Library Path" --msgbox "initialized ldconfig -v"
+         sleep 2
 }
 
 #==========================================================================================
 create_svxlink_service() {
-    get_install_path || return 1
+    
     service_file="/lib/systemd/system/svxlink.service"
 
     sudo tee "$service_file" >/dev/null <<EOF
@@ -139,7 +141,6 @@ EOF
 
 #==========================================================================================
 create_log_dir() {
-    get_install_path || return 1
     log_dir="$default_install_path/var/log"
     log_file="$log_dir/svxlink.log"
 
@@ -155,46 +156,270 @@ File: $log_file" 12 60
 
 #==========================================================================================
 create_svxlink_conf() {
-    get_install_path || return 1
+   
     USERNAME=$(logname 2>/dev/null || echo "$USER")
 
     conf_file="$default_install_path/svxlink/svxlink.conf"
 
+    # Ask for callsign
     CALLSIGN=$(dialog --title "SvxLink Setup" --inputbox "Enter your callsign:" 8 40 2>&1 >/dev/tty)
-    [[ -z "$CALLSIGN" ]] && { dialog --title "SvxLink Setup" --msgbox "No callsign entered, aborting config." 8 50; return 1; }
+    if [[ -z "$CALLSIGN" ]]; then
+        dialog --title "SvxLink Setup" --msgbox "? No callsign entered, aborting config." 8 50
+        return 1
+    fi
 
-    [[ -f "$conf_file" ]] && sudo cp "$conf_file" "$conf_file.bak.$(date +%Y%m%d-%H%M%S)"
+    # Backup if config exists
+    if [[ -f "$conf_file" ]]; then
+        sudo cp "$conf_file" "$conf_file.bak.$(date +%Y%m%d-%H%M%S)"
+    fi
 
+    # Generate fresh config
     sudo tee "$conf_file" >/dev/null <<EOF
+###############################################################################
+#                                                                             #
+#                Configuration file for the SvxLink server                    #
+#                                                                             #
+###############################################################################
+
 [GLOBAL]
 MODULE_PATH=$default_install_path/lib/svxlink
 LOGIC_CORE_PATH=$default_install_path/lib/svxlink
+LOGICS=SimplexLogic
 CFG_DIR=$default_install_path/svxlink/svxlink.d
+TIMESTAMP_FORMAT="%Y-%m-%d %H:%M:%S"
+CARD_SAMPLE_RATE=48000
+CARD_CHANNELS=1
+LOCATION_INFO=LocationInfo
+
+[SimplexLogic]
+TYPE=Simplex
+RX=Rx1
+TX=Tx1
+MODULES=ModuleHelp,ModuleParrot,ModuleEchoLink
+CALLSIGN=$CALLSIGN
+SHORT_IDENT_INTERVAL=15
+LONG_IDENT_INTERVAL=60
 EVENT_HANDLER=$default_install_path/share/svxlink/events.tcl
-...
+DEFAULT_LANG=en_US
+RGR_SOUND_DELAY=0
+MACROS=Macros
+FX_GAIN_NORMAL=0
+FX_GAIN_LOW=-12
+DTMF_PTY=/tmp/svxlink_dtmf
+DTMF_CTRL_PTY=/tmp/svxlink_dtmf
+
+[Macros]
+1=EchoLink:766633#
+2=EchoLink:359422#
+8=EchoLink:54452#
+9=EchoLink:9999#
+
+[Rx1]
+TYPE=Local
+AUDIO_DEV=alsa:plughw:0,0
+AUDIO_CHANNEL=0
+LIMITER_THRESH=-6
+SQL_DET=HIDRAW
+HID_DEVICE=/dev/$USERNAME
+HID_SQL_PIN=VOL_DN
+SIGLEV_SLOPE=1
+SIGLEV_OFFSET=0
+SQL_SIGLEV_OPEN_THRESH=30
+SQL_SIGLEV_CLOSE_THRESH=10
+DEEMPHASIS=0
+PEAK_METER=0
+DTMF_DEC_TYPE=INTERNAL
+DTMF_DETECTION=1
+DTMF_MUTING=1
+DTMF_HANGTIME=40
+
+[Tx1]
+TYPE=Local
+TX_ID=T
+AUDIO_DEV=alsa:plughw:0,0
+AUDIO_CHANNEL=0
+AUDIO_DEV_KEEP_OPEN=1
+LIMITER_THRESH=-6
+PTT_TYPE=Hidraw
+HID_DEVICE=/dev/$USERNAME
+HID_PTT_PIN=GPIO3
+TX_DELAY=1000
+DTMF_TONE_LENGTH=100
+DTMF_TONE_SPACING=50
+DTMF_DIGIT_PWR=-15
+MASTER_GAIN=0
+PEAK_METER=1
+PREEMPHASIS=0
+
+[LocationInfo]
+APRS_SERVER_LIST=euro.aprs2.net:14580
+STATUS_SERVER_LIST=aprs.echolink.org:5199
+LON_POSITION=26.09.27E
+LAT_POSITION=44.26.40N
+CALLSIGN=EL-$CALLSIGN
+LOGIN_CALLSIGN=$CALLSIGN
+FREQUENCY=433.650
+TX_POWER=8
+ANTENNA_GAIN=6
+ANTENNA_HEIGHT=20m
+ANTENNA_DIR=-1
+PATH=WIDE1-1
+BEACON_INTERVAL=10
+SYMBOL="/-"
+COMMENT=SvxLink Node - $CALLSIGN
 EOF
 
-    dialog --title "SvxLink Config" --msgbox "? New config created at:\n$conf_file\nUsing callsign: $CALLSIGN\nBase path: $default_install_path" 15 70
+    dialog --title "SvxLink Config" --msgbox "? New config created at:\n$conf_file\n\nUsing callsign: $CALLSIGN\nHID_DEVICE=/dev/$USERNAME\nBase path: $default_install_path" 15 70
 }
 
 #==========================================================================================
 create_module_echolink_conf() {
-    get_install_path || return 1
+    
 
     echolink_conf_dir="$default_install_path/svxlink/svxlink.d"
     echolink_conf_file="$echolink_conf_dir/ModuleEchoLink.conf"
-    ...
+
+    # Ask for callsign (prefill if we already have one)
+    default_cs="${CALLSIGN:-}"
+    CALLSIGN=$(dialog --title "EchoLink Setup" --inputbox "Enter your callsign (e.g. YO3XXX):" 8 50 "$default_cs" 2>&1 >/dev/tty) || return 1
+    CALLSIGN=${CALLSIGN^^}          # uppercase it
+
+    # Derive EchoLink callsign with -L (add if not present)
+    EL_CALLSIGN="$CALLSIGN"
+    [[ "$EL_CALLSIGN" != *-L ]] && EL_CALLSIGN="${EL_CALLSIGN}-L"
+
+    # Ask for the rest
+    PASSWORD=$(dialog --title "EchoLink Setup" --inputbox "Enter your EchoLink password:" 8 50 2>&1 >/dev/tty) || return 1
+    SYSOPNAME=$(dialog --title "EchoLink Setup" --inputbox "Enter your Sysop name:" 8 50 2>&1 >/dev/tty) || return 1
+    LOCATION=$(dialog --title "EchoLink Setup" --inputbox "Enter your location/QTH:" 8 50 2>&1 >/dev/tty) || return 1
+
+    # Persist CALLSIGN globally for later steps
+    export CALLSIGN
+
+    sudo mkdir -p "$echolink_conf_dir"
+    if [[ -f "$echolink_conf_file" ]]; then
+        sudo cp "$echolink_conf_file" "$echolink_conf_file.bak.$(date +%Y%m%d-%H%M%S)"
+    fi
+
+    sudo tee "$echolink_conf_file" >/dev/null <<EOF
+[ModuleEchoLink]
+NAME=EchoLink
+ID=2
+#TIMEOUT=60
+MUTE_LOGIC_LINKING=0
+ALLOW_IP=192.168.0.0/24
+#DROP_ALL_INCOMING=0
+#DROP_INCOMING=^()$
+#REJECT_INCOMING=^()$
+#ACCEPT_INCOMING=^(.*)$
+#REJECT_OUTGOING=^()$
+#ACCEPT_OUTGOING=^(.*)$
+#REJECT_CONF=0
+#CHECK_NR_CONNECTS=2,300,120
+SERVERS=servers.echolink.org
+CALLSIGN=${EL_CALLSIGN}
+PASSWORD=${PASSWORD}
+SYSOPNAME=${SYSOPNAME}
+LOCATION=${LOCATION}
+
+MESSAGE_SERVER_IP=192.168.150.103
+MESSAGE_SERVER_PORT=9000
+
+#PROXY_SERVER=137.226.114.148
+#PROXY_PORT=8100
+#PROXY_PASSWORD=PUBLIC
+
+#BIND_ADDR=192.168.1.100
+MAX_QSOS=10
+MAX_CONNECTIONS=11
+LINK_IDLE_TIMEOUT=0
+#AUTOCON_ECHOLINK_ID=9999
+#AUTOCON_TIME=1200
+#USE_GSM_ONLY=1
+DEFAULT_LANG=en_US
+COMMAND_PTY=/dev/shm/echolink_ctrl
+#LOCAL_RGR_SOUND=1
+#REMOTE_RGR_SOUND=0
+DESCRIPTION="You have connected to a SvxLink node,\n"
+            "a voice services system for Linux with EchoLink\n"
+            "support.\n"
+            "Check out http://svxlink.sf.net/ for more info\n"
+            "\n"
+            "QTH:     ${LOCATION}\n"
+            "QRG:     Simplex link on 433.650 MHz\n"
+            "CTCSS:   none\n"
+            "Trx:     CM108 based USB\n"
+            "Antenna: default\n"
+EOF
+
+    dialog --title "ModuleEchoLink Config" --msgbox "? Created:\n$echolink_conf_file
+
+EchoLink callsign: ${EL_CALLSIGN}
+Sysop: ${SYSOPNAME}
+Location: ${LOCATION}" 18 70
+}
+#================================================================================================================
+run_sa818_menu() {
+    sa818_dir="$default_base_path/src/svxlink/scripts/sa818"
+    sa818_menu_file="$sa818_dir/sa818_menu.sh"
+
+    if [[ ! -f "$sa818_menu_file" ]]; then
+        dialog --title "Error" --msgbox "Could not find $sa818_menu_file" 8 60
+        return 1
+    fi
+
+    # Load the function definition
+    source "$sa818_menu_file"
+
+    # Explicitly call it
+    sa818_menu
+}
+
+#=====================================================================================================
+
+install_sa818_wrapper() {
+    sa818_py="/opt/svxlink/src/svxlink/scripts/sa818/sa818.py"
+    wrapper="/usr/local/bin/sa818"
+
+    if [[ -f "$sa818_py" ]]; then
+        sudo tee "$wrapper" >/dev/null <<EOF
+#!/bin/bash
+exec python3 "$sa818_py" "\$@"
+EOF
+        sudo chmod +x "$wrapper"
+    fi
 }
 
 #==========================================================================================
-run_sa818_menu() {
-    get_install_path || return 1
+install_sa818_shortcut() {
+    sa818_menu_file="/opt/svxlink/src/svxlink/scripts/sa818/sa818_menu.sh"
+    shortcut="/usr/local/bin/sa818_menu"
 
-    sa818_dir="$default_install_path/share/svxlink/SA818"
-    sa818_menu_file="$sa818_dir/sa818_menu.sh"
-    ...
+    if [[ -f "$sa818_menu_file" ]]; then
+        sudo tee "$shortcut" >/dev/null <<EOF
+#!/bin/bash
+exec bash "$sa818_menu_file" "\$@"
+EOF
+        sudo chmod +x "$shortcut"
+    fi
 }
 
+#==========================================================================================
+check_sa818_module() {
+    dialog --title "SA818 Check" --infobox "Testing SA818 module via /dev/serial0 @ 9600 baud..." 8 60
+    sleep 2
+
+    OUTPUT=$(sa818 --port /dev/serial0 --speed 9600 version 2>&1)
+    RC=$?
+
+    if [[ $RC -ne 0 ]]; then
+        dialog --title "SA818 Check" --msgbox "? Failed to communicate with SA818.\n\nError:\n$OUTPUT" 15 70
+        return 1
+    fi
+
+    dialog --title "SA818 Check" --msgbox "? SA818 module responded:\n\n$OUTPUT" 15 70
+    return 0
+}
 #==========================================================================================
 # --- RUN MAIN ---
 main
