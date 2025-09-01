@@ -13,8 +13,7 @@ main() {
 
     check_dialog
     ask_paths   # moved here
-         ask_sa818_hardware 
-
+    ask_sa818_hardware 
     check_cmake_and_packages
     check_libssl
     ensure_svxlink_user
@@ -27,7 +26,7 @@ main() {
     if [[ "$SKIP_SA818" -eq 0 ]]; then
         run_with_log install_pyserial
         run_with_log enable_uart_and_serial0
-        dialog --title "Reboot Required" --msgbox "UART enabled and udev rule installed.\n\nSystem must reboot now." 12 60
+                  dialog --title "Reboot Required" --msgbox "UART enabled and udev rule installed.\n\nSystem must reboot now." 12 60
         sudo reboot
     else
         dialog --title "SA818 Skipped" --msgbox "You chose not to configure SA818 hardware.\n\nSkipping UART and serial setup." 12 60
@@ -116,7 +115,9 @@ ask_paths() {
     while true; do
         # Ask source path
         install_path_source=$(dialog --title "SvxLink Sources" \
-            --inputbox "Enter path where SvxLink sources/build are:" 10 60 "$default_source_path" \
+            --inputbox "Enter path where SvxLink sources/build are:\n
+                                                     You can give up anny path you want\n
+ 			but try to keep the structure /x1/x2/x3/x4" 10 60 "$default_source_path" \
             3>&1 1>&2 2>&3 3>&-)
         [[ $? -ne 0 ]] && exit 1
 
@@ -236,38 +237,42 @@ run_make_install() {
         echo 100
     } | dialog --title "make install" --gauge "Installing SvxLink..." 10 60 0
 }
-#==========================================================================================
+#=========================================================================================
 enable_uart_and_serial0() {
-    dialog --title "UART & Serial0 Setup" --infobox "Configuring UART, disabling serial console, and setting udev permissions...\n\nPlease wait..." 10 60
+    dialog --title "UART & Serial0 Setup" --infobox "Configuring UART, disabling serial console, and fixing udev rules...\n\nPlease wait..." 10 60
     sleep 2
 
     # --- Enable UART in config.txt ---
     sudo sed -i '/enable_uart=/d' /boot/firmware/config.txt
     echo "enable_uart=1" | sudo tee -a /boot/firmware/config.txt >/dev/null
 
-    # --- Disable serial console login services ---
-    sudo systemctl disable --now serial-getty@ttyAMA0.service >/dev/null 2>&1
-    sudo systemctl disable --now serial-getty@ttyS0.service >/dev/null 2>&1
-
-    # --- Ensure Bluetooth is disabled on UART (Pi3/4/Zero) ---
-    if ! grep -q "dtoverlay=disable-bt" /boot/firmware/config.txt; then
+    # --- Disable Bluetooth to free ttyAMA0 ---
+    if ! grep -q "^dtoverlay=disable-bt" /boot/firmware/config.txt; then
         echo "dtoverlay=disable-bt" | sudo tee -a /boot/firmware/config.txt >/dev/null
     fi
 
+    # --- Add core_freq=250 (helps keep UART stable on Pi3/4) ---
+    if ! grep -q "^core_freq=250" /boot/firmware/config.txt; then
+        echo "core_freq=250" | sudo tee -a /boot/firmware/config.txt >/dev/null
+    fi
+
+    # --- Kill & mask serial console services ---
+    for svc in serial-getty@ttyAMA0.service serial-getty@ttyS0.service; do
+        sudo systemctl disable --now "$svc" >/dev/null 2>&1
+        sudo systemctl mask "$svc" >/dev/null 2>&1
+    done
+
     # --- Install udev rule for /dev/serial0 ---
     cat <<EOF | sudo tee /etc/udev/rules.d/99-serial0.rules >/dev/null
-# Ensure /dev/serial0 is accessible to the 'dialout' group
+# Ensure /dev/serial0 always points to the full UART (ttyAMA0) and is group=dialout
 KERNEL=="ttyAMA0", SYMLINK+="serial0", GROUP="dialout", MODE="0660"
-KERNEL=="ttyS0",   SYMLINK+="serial0", GROUP="dialout", MODE="0660"
 EOF
 
-    # --- Reload udev rules ---
+    # --- Reload rules ---
     sudo udevadm control --reload-rules
     sudo udevadm trigger
 
-    # --- Confirm ---
-    dialog --title "Reboot Required" --msgbox "✅ UART enabled, serial console disabled, and /dev/serial0 permissions fixed.\n\nSystem must reboot now to apply changes." 12 60
-
+    dialog --title "Reboot Required" --msgbox "? UART enabled, Bluetooth disabled, serial-getty masked, and /dev/serial0 linked to ttyAMA0.\n\nSystem must reboot now to apply changes." 12 60
     sudo reboot
 }
 
@@ -341,7 +346,6 @@ ask_sa818_hardware() {
     ini_file="$base_source_path/install_path.ini"
     echo "skip_sa818=$SKIP_SA818" | sudo tee -a "$ini_file" > /dev/null
 }
-
 #==========================================================================================
 # --- RUN MAIN ---
 main
