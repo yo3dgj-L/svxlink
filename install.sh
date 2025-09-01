@@ -34,7 +34,7 @@ main() {
         dialog --title "SA818 Skipped" --msgbox "SA818 support not installed." 10 60
     fi
 
-          log install_cm108_udev_rule
+          install_cm108_udev_rule
 
     dialog --title "Done" --msgbox "All operations completed successfully." 8 50
     clear
@@ -224,11 +224,11 @@ DTMF_CTRL_PTY=/tmp/svxlink_dtmf
 
 [Rx1]
 TYPE=Local
-AUDIO_DEV=alsa:plughw:0,0
+AUDIO_DEV=${RX_DEV}
 AUDIO_CHANNEL=0
 LIMITER_THRESH=-6
 SQL_DET=HIDRAW
-HID_DEVICE=/dev/$USERNAME
+HID_DEVICE=$(echo "$CALLSIGN" | tr '[:upper:]' '[:lower:]')
 HID_SQL_PIN=VOL_DN
 SIGLEV_SLOPE=1
 SIGLEV_OFFSET=0
@@ -244,12 +244,12 @@ DTMF_HANGTIME=40
 [Tx1]
 TYPE=Local
 TX_ID=T
-AUDIO_DEV=alsa:plughw:0,0
+AUDIO_DEV=${TX_DEV}
 AUDIO_CHANNEL=0
 AUDIO_DEV_KEEP_OPEN=1
 LIMITER_THRESH=-6
 PTT_TYPE=Hidraw
-HID_DEVICE=/dev/$USERNAME
+HID_DEVICE=/dev/$(echo "$CALLSIGN" | tr '[:upper:]' '[:lower:]')
 HID_PTT_PIN=GPIO3
 TX_DELAY=1000
 DTMF_TONE_LENGTH=100
@@ -472,25 +472,37 @@ run_with_log() {
     fi
 }
 #=========================================================================================
-install_cm108_udev_rule() {
-    dialog --title "CM108 Setup" --infobox "Installing udev rule for CM108 USB soundcard...\n\nThis prevents PulseAudio from grabbing it and creates a stable symlink /dev/<CALLSIGN>." 12 60
+dialog --title "CM108 Setup" --infobox "Configuring CM108 USB soundcard...\n\nPlease wait..." 10 60
     sleep 2
 
-    # Use CALLSIGN if available, else fallback
-    local callsign="${CALLSIGN:-yo3dgj}"
+    # Ensure callsign is available, force lowercase for device name
+    local callsign_lc=$(echo "${CALLSIGN:-svxlink}" | tr '[:upper:]' '[:lower:]')
 
+    # --- Detect CM108 ALSA card index ---
+    local card_num
+    card_num=$(aplay -l | grep -i 'USB Audio' | grep -i 'C-Media' | awk -F'[: ]+' '{print $2}' | head -n1)
+
+    if [[ -n "$card_num" ]]; then
+        RX_DEV="alsa:plughw:${card_num},0"
+        TX_DEV="alsa:plughw:${card_num},0"
+    else
+        RX_DEV="alsa:plughw:0,0"
+        TX_DEV="alsa:plughw:0,0"
+    fi
+
+    # --- Save udev rule ---
     cat <<EOF | sudo tee /etc/udev/rules.d/99-cm108.rules >/dev/null
 # Block PulseAudio using CM108 USB soundcard for SvxLink
 ATTRS{idVendor}=="0d8c", ATTRS{idProduct}=="0012", ENV{PULSE_IGNORE}="1"
 
-# Create a stable symlink /dev/$callsign pointing to the CM108 GPIO HID device
-SUBSYSTEM=="hidraw", ATTRS{idVendor}=="0d8c", ATTRS{idProduct}=="0012", SYMLINK+="$callsign", MODE="0666"
+# Stable symlink for HID GPIO device
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="0d8c", ATTRS{idProduct}=="0012", SYMLINK+="${callsign_lc}", MODE="0666"
 EOF
 
     sudo udevadm control --reload-rules
     sudo udevadm trigger
 
-    dialog --title "CM108 Setup" --msgbox "? CM108 rule installed.\n\n• PulseAudio will ignore the device\n• /dev/$callsign symlink created\n\nCheck with:\n  ls -l /dev/$callsign" 15 60
+    dialog --title "CM108 Setup" --msgbox "✅ CM108 rule installed.\n\n• PulseAudio will ignore the device\n• /dev/${callsign_lc} symlink created\n• Using card: plughw:${card_num},0" 15 60
 }
 
 
