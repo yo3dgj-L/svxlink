@@ -13,6 +13,8 @@ main() {
 
     check_dialog
     ask_paths   # moved here
+         ask_sa818_hardware 
+
     check_cmake_and_packages
     check_libssl
     ensure_svxlink_user
@@ -21,19 +23,17 @@ main() {
     run_make_doc
     run_make_install
     change_files
-    
-        if [[ "$SKIP_SA818" -eq 0 ]]; then
-        	run_with_log install_pyserial
-        	run_with_log enable_uart_serial
-        	run_with_log install_serial0_udev_rule
 
-        	dialog --title "Reboot Required" --msgbox "UART enabled, udev rule installed.\n\nSystem must reboot to apply changes." 12 60
-        	sleep 2
-        	clear
-        	sudo reboot
+    if [[ "$SKIP_SA818" -eq 0 ]]; then
+        run_with_log install_pyserial
+        run_with_log enable_uart_serial
+        run_with_log install_serial0_udev_rule
+        dialog --title "Reboot Required" --msgbox "UART enabled and udev rule installed.\n\nSystem must reboot now." 12 60
+        sudo reboot
     else
-        	dialog --title "SA818 Skipped" --msgbox "You chose not to configure SA818 hardware.\n\nSkipping UART and serial setup." 12 60
+        dialog --title "SA818 Skipped" --msgbox "You chose not to configure SA818 hardware.\n\nSkipping UART and serial setup." 12 60
     fi
+        
 
 }
 
