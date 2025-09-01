@@ -8,8 +8,8 @@ default_install_path="/opt/mysvxlink"
 #=========================================================================================
 main() {
 
-          LOG_DIR="/var/log/svxlink-install"
-         sudo mkdir -p "$LOG_DIR"
+     LOG_DIR="/var/log/svxlink-install"
+     sudo mkdir -p "$LOG_DIR"
 
     check_dialog
     ask_paths   # moved here
@@ -21,15 +21,20 @@ main() {
     run_make_doc
     run_make_install
     change_files
-    enable_uart_serial
-    run_with_log install_pyserial
-    run_with_log enable_uart_serial
-    run_with_log install_serial0_udev_rule
     
-    dialog --title "Reboot Required" --msgbox "UART enabled, udev rule installed.\n\nSystem must reboot to apply changes." 12 60
-         sleep 2
-         clear
-    sudo reboot   
+        if [[ "$SKIP_SA818" -eq 0 ]]; then
+        	run_with_log install_pyserial
+        	run_with_log enable_uart_serial
+        	run_with_log install_serial0_udev_rule
+
+        	dialog --title "Reboot Required" --msgbox "UART enabled, udev rule installed.\n\nSystem must reboot to apply changes." 12 60
+        	sleep 2
+        	clear
+        	sudo reboot
+    else
+        	dialog --title "SA818 Skipped" --msgbox "You chose not to configure SA818 hardware.\n\nSkipping UART and serial setup." 12 60
+    fi
+
 }
 
 #=========================================================================================
@@ -344,6 +349,21 @@ run_with_log() {
     else
         echo "=== $func completed OK at $(date) ===" | sudo tee -a "$logfile" >/dev/null
     fi
+}
+
+#=====================================================================================================
+
+ask_sa818_hardware() {
+    dialog --title "SA818 Hardware" --yesno "Do you have SA818 hardware installed and want to configure it now?" 10 60
+    if [[ $? -eq 0 ]]; then
+        SKIP_SA818=0
+    else
+        SKIP_SA818=1
+    fi
+
+    # Save to ini file for install.sh
+    ini_file="$base_source_path/install_path.ini"
+    echo "skip_sa818=$SKIP_SA818" | sudo tee -a "$ini_file" > /dev/null
 }
 
 #==========================================================================================
