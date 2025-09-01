@@ -149,7 +149,8 @@ EOF
 create_log_dir() {
     log_dir="$default_install_path/var/log"
     log_file="$log_dir/svxlink.log"
-
+create_log_dir
+create_log_dir
     sudo mkdir -p "$log_dir"
     sudo touch "$log_file"
     sudo chown "$USER":"$USER" "$log_file"
