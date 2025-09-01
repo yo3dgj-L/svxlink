@@ -299,25 +299,6 @@ install_pyserial() {
 }
 
 #==========================================================================================
-enable_uart_serial() {
-    dialog --title "UART Setup" --infobox "Configuring UART and disabling serial console..." 10 60
-    sleep 2
-
-    # Enable UART in config.txt
-    sudo sed -i '/enable_uart=/d' /boot/firmware/config.txt
-    echo "enable_uart=1" | sudo tee -a /boot/firmware/config.txt >/dev/null
-
-    # Disable serial console login
-    sudo systemctl disable serial-getty@ttyAMA0.service >/dev/null 2>&1
-    sudo systemctl stop serial-getty@ttyAMA0.service >/dev/null 2>&1
-
-    # Force serial0 to map to full UART (disable Bluetooth console)
-    if ! grep -q "dtoverlay=disable-bt" /boot/firmware/config.txt; then
-        echo "dtoverlay=disable-bt" | sudo tee -a /boot/firmware/config.txt >/dev/null
-    fi
-}
-
-#==========================================================================================
 install_serial0_udev_rule() {
     dialog --title "UART Permissions" --infobox "Installing udev rule for /dev/serial0..." 8 50
     sleep 2
