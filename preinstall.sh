@@ -111,7 +111,7 @@ ensure_svxlink_user() {
 ask_paths() {
     while true; do
         install_path_source=$(dialog --title "SvxLink Sources" \
-            --inputbox "Enter path where SvxLink sources/build are:\n\nUse a structure like /x1/x2/x3/x4" 12 70 "$default_source_path" \
+            --inputbox "Enter path where SvxLink sources/build are:\n\nYou can use anny path you want\n\nBut Use a structure like this /x1/x2/x3/x4" 12 70 "$default_source_path" \
             3>&1 1>&2 2>&3 3>&-)
         [[ $? -ne 0 ]] && continue
 
