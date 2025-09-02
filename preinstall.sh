@@ -296,6 +296,11 @@ welcome_text() {
 dialog --title "Welcome to SvxLink Installer" --msgbox "\
 Welcome to the SvxLink installation script!
 
+This SvxLink version has some modification enable to work 
+with the SvxLink_Remote Android App.
+But can be used for all installs read the install_readme
+for more information.
+
 This script will:
   • Check and install all required dependencies
   • Build and install SvxLink from source
@@ -305,7 +310,7 @@ This script will:
 
 Info:
    I you don't have a addon radio board like SA818 with sound chip
-   you have to configure you hardware yourself :
+   you have to configure you hardware yourself.
     
 ⚠️ Note: Some steps may take several minutes. Do not interrupt.
 
