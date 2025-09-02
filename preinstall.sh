@@ -51,7 +51,6 @@ check_dialog() {
 check_cmake_and_packages() {
     dialog --title "Dependencies" --infobox "Checking for cmake and build dependencies..." 10 60
     sleep 2
-
     if dpkg -s cmake 2>/dev/null | grep -q "Status: install ok installed"; then
         dialog --title "Dependencies" --msgbox "✅ cmake already installed." 8 40
     else
@@ -139,12 +138,16 @@ ask_paths() {
 #=========================================================================================
 prepare_build() {
     dialog --title "Build" --infobox "Running cmake, please wait..." 10 60
+    cd "$install_path_source" || {
+        dialog --title "Error" --msgbox "❌ Could not change to $install_path_source" 10 60
+        exit 1
+    }
     (
         sudo cmake -DUSE_QT=OFF \
             -DCMAKE_INSTALL_PREFIX="$install_path_svxlink" \
             -DSYSCONF_INSTALL_DIR="$install_path_svxlink" \
             -DLOCAL_STATE_DIR="$install_path_svxlink/var" \
-            -DWITH_SYSTEMD=ON .. > /dev/null 2>&1
+            -DWITH_SYSTEMD=ON .. > "$LOG_DIR/cmake.log" 2>&1
     ) &
     cmake_pid=$!
     {
@@ -154,14 +157,19 @@ prepare_build() {
             echo $percent
             sleep 1
         done
+        wait $cmake_pid
+        rc=$?
         echo 100
+        exit $rc
     } | dialog --title "CMake Config" --gauge "Configuring project..." 10 60 0
+    [[ $rc -ne 0 ]] && dialog --title "Error" --msgbox "❌ cmake failed. Check log: $LOG_DIR/cmake.log" 12 60 && exit 1
 }
 
 #=========================================================================================
 run_make() {
+    cd "$install_path_source" || exit 1
     (
-        sudo make -j4 2>&1 | while read -r line; do
+        sudo make -j4 > "$LOG_DIR/make.log" 2>&1 | while read -r line; do
             if [[ "$line" =~ \[[[:space:]]*([0-9]+)%\] ]]; then
                 percent="${BASH_REMATCH[1]}"
                 echo "XXX"; echo "$percent"; echo "$line"; echo "XXX"
@@ -172,8 +180,9 @@ run_make() {
 
 #=========================================================================================
 run_make_doc() {
+    cd "$install_path_source" || exit 1
     (
-        sudo make doc 2>&1 | while read -r line; do
+        sudo make doc > "$LOG_DIR/make_doc.log" 2>&1 | while read -r line; do
             if [[ "$line" =~ \[[[:space:]]*([0-9]+)%\] ]]; then
                 percent="${BASH_REMATCH[1]}"
                 echo "XXX"; echo "$percent"; echo "$line"; echo "XXX"
@@ -186,8 +195,9 @@ run_make_doc() {
 
 #=========================================================================================
 run_make_install() {
+    cd "$install_path_source" || exit 1
     (
-        sudo make install > /dev/null 2>&1
+        sudo make install > "$LOG_DIR/make_install.log" 2>&1
     ) &
     cmake_pid=$!
     {
@@ -197,8 +207,12 @@ run_make_install() {
             echo $percent
             sleep 1
         done
+        wait $cmake_pid
+        rc=$?
         echo 100
+        exit $rc
     } | dialog --title "make install" --gauge "Installing SvxLink..." 10 60 0
+    [[ $rc -ne 0 ]] && dialog --title "Error" --msgbox "❌ make install failed. Check log: $LOG_DIR/make_install.log" 12 60 && exit 1
 }
 
 #=========================================================================================
@@ -296,10 +310,8 @@ welcome_text() {
 dialog --title "Welcome to SvxLink Installer" --msgbox "\
 Welcome to the SvxLink installation script!
 
-This SvxLink version has some modification enable to work 
-with the SvxLink_Remote Android App.
-But can be used for all installs read the install_readme
-for more information.
+This SvxLink version has modifications to work with the SvxLink_Remote Android App.
+It can also be used for all installs. See install_readme for more info.
 
 This script will:
   • Check and install all required dependencies
@@ -308,14 +320,11 @@ This script will:
   • Install English Heather voice prompts
   • Optionally configure SA818 hardware support
 
-Info:
-   I you don't have a addon radio board like SA818 with sound chip
-   you have to configure you hardware yourself.
-    
-⚠️ Note: Some steps may take several minutes. Do not interrupt.
+⚠️ Some steps may take several minutes. Do not interrupt.
 
 Press <OK> to continue." 30 80
 }
+
 #=========================================================================================
 # --- RUN MAIN ---
 main
