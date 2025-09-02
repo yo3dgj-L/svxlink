@@ -13,7 +13,6 @@ main() {
     check_dialog
     welcome_text
     ask_paths
-    create_bash_aliases
     ask_sa818_hardware
     check_cmake_and_packages
     check_libssl
@@ -23,26 +22,24 @@ main() {
     run_make_doc
     run_make_install
     change_files
-    install_sounds
+    create_bash_aliases
 
     if [[ "$SKIP_SA818" -eq 0 ]]; then
         run_with_log install_pyserial
         run_with_log enable_uart_and_serial0
         dialog --title "Reboot Required" --msgbox "✅ UART enabled and udev rule installed.\n\nSystem must reboot now." 12 60
-        sleep 1
-        clear
         sudo reboot
     else
         dialog --title "SA818 Skipped" --msgbox "⚠️ You chose not to configure SA818 hardware.\n\nSkipping UART and serial setup." 12 60
     fi
 
-    
+    install_sounds
 }
 
 #=========================================================================================
 check_dialog() {
-    #dialog --title "Dialog" --infobox "Checking if 'dialog' is installed..." 8 40
-    #sleep 1
+    dialog --title "Dialog" --infobox "Checking if 'dialog' is installed..." 8 40
+    sleep 1
     if dpkg -s dialog 2>/dev/null | grep -q 'Status: install ok installed'; then
         dialog --title "Dialog" --msgbox "✅ 'dialog' is already installed." 8 40
     else
@@ -292,7 +289,7 @@ ask_sa818_hardware() {
     echo "skip_sa818=$SKIP_SA818" | sudo tee -a "$ini_file" > /dev/null
 }
 
-#=========================================================================================
+#==================================================================
 
 welcome_text() {
 dialog --title "Welcome to SvxLink Installer" --msgbox "\
@@ -361,7 +358,6 @@ EOF
 
     dialog --title "Bash Aliases" --msgbox "✅ Aliases file created at:\n$aliases_file\n\nThe following commands are now available:\n  svxlog, svxconf, svxstart, svxstop, svxstatus, svxrestart, down, restart\n\n👉 To activate immediately, run:\n  source ~/.bashrc\n\nOr restart your shell." 18 70
 }
-
 
 #=========================================================================================
 # --- RUN MAIN ---
