@@ -13,6 +13,7 @@ main() {
     check_dialog
     welcome_text
     ask_paths
+    create_bash_aliases
     ask_sa818_hardware
     check_cmake_and_packages
     check_libssl
@@ -317,6 +318,48 @@ Info:
 ⚠️ Note: Some steps may take several minutes. Do not interrupt.
 
 Press <OK> to continue." 30 70
+}
+
+#==========================================================================================
+create_bash_aliases() {
+    local username
+    username=$(logname 2>/dev/null || echo "$USER")
+    local user_home="/home/$username"
+    local aliases_file="$user_home/.bash_aliases"
+
+    dialog --title "Bash Aliases" --infobox "Creating .bash_aliases for user: $username" 8 50
+    sleep 2
+
+    # Ensure .bash_aliases exists
+    sudo touch "$aliases_file"
+    sudo chown "$username":"$username" "$aliases_file"
+
+    # Write aliases (replace path with $default_install_path)
+    cat <<EOF | sudo tee "$aliases_file" >/dev/null
+# aliases svxlink
+alias svxlog="tail -f $default_install_path/var/log/svxlink.log"
+alias svxconf="sudo nano $default_install_path/svxlink/svxlink.conf"
+alias svxstart="sudo systemctl start svxlink"
+alias svxstop="sudo systemctl stop svxlink"
+alias svxstatus="sudo systemctl status svxlink"
+alias svxrestart="sudo systemctl restart svxlink"
+alias down="sudo shutdown now"
+alias restart="sudo reboot now"
+
+alias metarconf="sudo nano $default_install_path/svxlink/svxlink.d/ModuleMetarInfo.conf"
+alias echolinkconf="sudo nano $default_install_path/svxlink/svxlink.d/ModuleEchoLink.conf"
+alias helpconf="sudo nano $default_install_path/svxlink/svxlink.d/ModuleHelp.conf"
+
+# udev
+alias reload_udev="sudo udevadm control --reload-rules && sudo udevadm trigger"
+EOF
+
+    # Ensure .bashrc loads .bash_aliases
+    if ! grep -q "if \[ -f ~/.bash_aliases \]" "$user_home/.bashrc"; then
+        echo -e "\n# Load aliases\nif [ -f ~/.bash_aliases ]; then\n    . ~/.bash_aliases\nfi" | sudo tee -a "$user_home/.bashrc" >/dev/null
+    fi
+
+    dialog --title "Bash Aliases" --msgbox "✅ Aliases file created at:\n$aliases_file\n\nThe following commands are now available:\n  svxlog, svxconf, svxstart, svxstop, svxstatus, svxrestart, down, restart\n\n👉 To activate immediately, run:\n  source ~/.bashrc\n\nOr restart your shell." 18 70
 }
 
 
