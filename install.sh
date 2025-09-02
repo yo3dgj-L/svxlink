@@ -115,7 +115,7 @@ update_ld_conf() {
         echo "$default_install_path/lib" | sudo tee "$conf_file" >/dev/null
         dialog --title "Library Path" --infobox "Running ldconfig to refresh cache..." 8 50
         # run silently, log output to trace
-        sudo ldconfig >> /var/log/svxlink-install/install_trace.log 2>&1
+        sudo ldconfig -v >> /var/log/svxlink-install/install_trace.log 2>&1
         dialog --title "Library Path" --msgbox "Added to ld.so.conf:\n$default_install_path/lib" 10 60
     fi
     log_func "${FUNCNAME[0]}" "STOP"
