@@ -350,15 +350,15 @@ LINK_IDLE_TIMEOUT=0
 DEFAULT_LANG=en_US
 COMMAND_PTY=/dev/shm/echolink_ctrl
 DESCRIPTION="You have connected to a SvxLink node,\n" \
-"A voice services system for Linux with EchoLink\n" \
-"support.\n" \
-"Check out http://svxlink.sf.net/ for more info\n" \
-"\n" \
-"QTH: ${LOCATION}\n" \
-"QRG: Simplex link on 433.650 MHz\n" \
-"CTCSS: none\n" \
-"Trx: CM108 based USB\n" \
-"Antenna: default\n"
+            "A voice services system for Linux with EchoLink\n" \
+            "support.\n" \
+            "Check out http://svxlink.sf.net/ for more info\n" \
+            "\n" \
+            "QTH: ${LOCATION}\n" \
+            "QRG: Simplex link on 433.650 MHz\n" \
+            "CTCSS: none\n" \
+            "Trx: CM108 based USB\n" \
+            "Antenna: default\n"
 EOF
 
     dialog --title "ModuleEchoLink Config" --msgbox "Created:\n$echolink_conf_file
