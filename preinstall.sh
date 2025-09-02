@@ -10,8 +10,8 @@ main() {
     LOG_DIR="/var/log/svxlink-install"
     sudo mkdir -p "$LOG_DIR"
 
-    welcome_text
     check_dialog
+    welcome_text
     ask_paths
     ask_sa818_hardware
     check_cmake_and_packages
