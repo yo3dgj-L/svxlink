@@ -11,6 +11,7 @@ main() {
     sudo mkdir -p "$LOG_DIR"
 
     check_dialog
+    welcome_text
     ask_paths
     ask_sa818_hardware
     check_cmake_and_packages
@@ -26,6 +27,7 @@ main() {
         run_with_log install_pyserial
         run_with_log enable_uart_and_serial0
         dialog --title "Reboot Required" --msgbox "✅ UART enabled and udev rule installed.\n\nSystem must reboot now." 12 60
+        clear
         sudo reboot
     else
         dialog --title "SA818 Skipped" --msgbox "⚠️ You chose not to configure SA818 hardware.\n\nSkipping UART and serial setup." 12 60
@@ -286,6 +288,35 @@ ask_sa818_hardware() {
     ini_file="$base_source_path/install_path.ini"
     echo "skip_sa818=$SKIP_SA818" | sudo tee -a "$ini_file" > /dev/null
 }
+
+#=========================================================================================
+
+welcome_text() {
+dialog --title "Welcome to SvxLink Installer" --msgbox "\
+Welcome to the SvxLink installation script!
+
+This SvxLink version has some modification enable to work 
+with the SvxLink_Remote Android App.
+But can be used for all installs read the install_readme
+for more information.
+
+
+This script will:
+  • Check and install all required dependencies
+  • Build and install SvxLink from source
+  • Configure your system paths and services
+  • Install English Heather voice prompts
+  • Optionally configure SA818 hardware support
+
+Info:
+   I you don't have a addon radio board like SA818 with sound chip
+   you have to configure you hardware yourself :
+    
+⚠️ Note: Some steps may take several minutes. Do not interrupt.
+
+Press <OK> to continue." 30 70
+}
+
 
 #=========================================================================================
 # --- RUN MAIN ---
