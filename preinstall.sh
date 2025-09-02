@@ -221,6 +221,7 @@ EOF
     sudo udevadm control --reload-rules
     sudo udevadm trigger
     dialog --title "Reboot Required" --msgbox "✅ UART enabled, Bluetooth disabled, serial-getty masked.\n\nSystem must reboot now." 12 60
+    clear
     sudo reboot
 }
 
