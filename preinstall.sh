@@ -138,10 +138,14 @@ ask_paths() {
 #=========================================================================================
 prepare_build() {
     dialog --title "Build" --infobox "Running cmake, please wait..." 10 60
+
+    # Ensure build directory exists
+    sudo mkdir -p "$install_path_source"
     cd "$install_path_source" || {
-        dialog --title "Error" --msgbox "❌ Could not change to $install_path_source" 10 60
+        dialog --title "Error" --msgbox "❌ Could not cd to $install_path_source" 10 60
         exit 1
     }
+
     (
         sudo cmake -DUSE_QT=OFF \
             -DCMAKE_INSTALL_PREFIX="$install_path_svxlink" \
@@ -150,6 +154,7 @@ prepare_build() {
             -DWITH_SYSTEMD=ON .. > "$LOG_DIR/cmake.log" 2>&1
     ) &
     cmake_pid=$!
+
     {
         percent=0
         while kill -0 $cmake_pid 2>/dev/null; do
@@ -162,20 +167,22 @@ prepare_build() {
         echo 100
         exit $rc
     } | dialog --title "CMake Config" --gauge "Configuring project..." 10 60 0
+
     [[ $rc -ne 0 ]] && dialog --title "Error" --msgbox "❌ cmake failed. Check log: $LOG_DIR/cmake.log" 12 60 && exit 1
 }
+
 
 #=========================================================================================
 run_make() {
     cd "$install_path_source" || exit 1
     (
-        sudo make -j4 > "$LOG_DIR/make.log" 2>&1 | while read -r line; do
+        sudo make -j$(nproc) > "$LOG_DIR/make.log" 2>&1 | while read -r line; do
             if [[ "$line" =~ \[[[:space:]]*([0-9]+)%\] ]]; then
                 percent="${BASH_REMATCH[1]}"
                 echo "XXX"; echo "$percent"; echo "$line"; echo "XXX"
             fi
         done
-    ) | dialog --title "make -j4" --gauge "Compiling SvxLink..." 15 70 0
+    ) | dialog --title "make -j$(nproc)" --gauge "Compiling SvxLink..." 15 70 0
 }
 
 #=========================================================================================
@@ -192,7 +199,6 @@ run_make_doc() {
         done
     ) | dialog --title "make doc" --gauge "Building documentation..." 15 70 0
 }
-
 #=========================================================================================
 run_make_install() {
     cd "$install_path_source" || exit 1
@@ -200,6 +206,7 @@ run_make_install() {
         sudo make install > "$LOG_DIR/make_install.log" 2>&1
     ) &
     cmake_pid=$!
+
     {
         percent=0
         while kill -0 $cmake_pid 2>/dev/null; do
@@ -212,9 +219,9 @@ run_make_install() {
         echo 100
         exit $rc
     } | dialog --title "make install" --gauge "Installing SvxLink..." 10 60 0
+
     [[ $rc -ne 0 ]] && dialog --title "Error" --msgbox "❌ make install failed. Check log: $LOG_DIR/make_install.log" 12 60 && exit 1
 }
-
 #=========================================================================================
 change_files() {
     dialog --title "Permissions" --infobox "Making install.sh and sa818_menu.sh executable..." 10 60
@@ -236,10 +243,14 @@ install_pyserial() {
 install_sounds() {
     dialog --title "Sound Files" --infobox "Installing English Heather sound pack...\nThis may take ~1 minute." 10 60
     sleep 2
+
+    # Ensure directory exists
+    sudo mkdir -p "$default_install_path/share/svxlink/sounds"
     cd "$default_install_path/share/svxlink/sounds" || {
-        dialog --title "Error" --msgbox "❌ Could not change to $default_install_path/share/svxlink/sounds" 10 60
+        dialog --title "Error" --msgbox "❌ Could not cd to $default_install_path/share/svxlink/sounds" 10 60
         exit 1
     }
+
     {
         echo "XXX"; echo "20"; echo "Downloading sound pack..."; echo "XXX"
         sudo wget -q https://github.com/sm0svx/svxlink-sounds-en_US-heather/releases/download/14.08/svxlink-sounds-en_US-heather-16k-13.12.tar.bz2
@@ -253,6 +264,7 @@ install_sounds() {
         echo "XXX"; echo "100"; echo "Cleaning up..."; echo "XXX"
         sudo rm -f svxlink-sounds-en_US-heather-16k-13.12.tar.bz2
     } | dialog --title "Sound Files" --gauge "Installing sound pack..." 12 70 0
+
     dialog --title "Sound Files" --msgbox "✅ Installed at:\n$default_install_path/share/svxlink/sounds/en_US" 12 60
 }
 
