@@ -41,8 +41,8 @@ main() {
 
 #=========================================================================================
 check_dialog() {
-    dialog --title "Dialog" --infobox "Checking if 'dialog' is installed..." 8 40
-    sleep 1
+    #dialog --title "Dialog" --infobox "Checking if 'dialog' is installed..." 8 40
+    #sleep 1
     if dpkg -s dialog 2>/dev/null | grep -q 'Status: install ok installed'; then
         dialog --title "Dialog" --msgbox "✅ 'dialog' is already installed." 8 40
     else
