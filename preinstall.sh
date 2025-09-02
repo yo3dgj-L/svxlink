@@ -72,7 +72,7 @@ check_cmake_and_packages() {
                 echo "XXX"; echo "$percent"; echo "Installing $pkg ($count of $total)"; echo "XXX"
                 sudo apt-get install -y "$pkg" > /dev/null 2>&1
             done
-        } | dialog --title "Installing Dependencies" --gauge "Preparing to install..." 15 70 0
+        } | dialog --title "Installing vmake and Dependencies" --gauge "Preparing to install..." 15 70 0
     fi
     clear
 }
