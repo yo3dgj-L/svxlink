@@ -10,7 +10,15 @@ main() {
     LOG_DIR="/var/log/svxlink-install"
     sudo mkdir -p "$LOG_DIR"
 
-    dialog --title "Installer" --infobox "ðŸ” Detecting installation paths..." 8 50
+    dialog --title "Installer" --infobox "Detecting installation paths..." 8 50
+
+log_func() {
+    local func="$1"
+    local status="$2"
+    local logfile="/var/log/svxlink-install/install_trace.log"
+
+    echo "[$(date +'%Y-%m-%d %H:%M:%S')] $func $status" | sudo tee -a "$logfile" >/dev/null
+}
     get_install_path
     dialog --title "Install Path" --msgbox "Installation path detected:\n\n$default_install_path" 10 60
 
@@ -30,7 +38,7 @@ main() {
         check_serial0_access
         run_sa818_menu
         check_sa818_module || exit 1
-        dialog --title "SA818 Setup" --msgbox "âœ… SA818 configured successfully.\nUse:\n  sa818 --help\n  sa818_menu" 12 60
+        dialog --title "SA818 Setup" --msgbox "SA818 configured successfully.\nUse:\n  sa818 --help\n  sa818_menu" 12 60
     else
         dialog --title "SA818 Skipped" --msgbox "SA818 support not installed." 10 60
     fi
@@ -44,10 +52,11 @@ main() {
 
 #==========================================================================================
 get_install_path() {
+log_func "${FUNCNAME[0]}" "START"
     dialog --title "Paths" --infobox "Looking for install_path.ini..." 8 50
     install_file=$(sudo -n find / -type f -name "install_path.ini" 2>/dev/null | head -n1)
     if [[ -z "$install_file" ]]; then
-        dialog --title "Install Path" --msgbox "âŒ Could not find install_path.ini" 10 50
+        dialog --title "Install Path" --msgbox "Could not find install_path.ini" 10 50
         sleep 3; clear; return 1
     fi
 
@@ -59,26 +68,30 @@ get_install_path() {
     default_source_path=${default_source_path%/}
     default_install_path=${default_install_path%/}
     default_base_path=${default_base_path%/}
+log_func "${FUNCNAME[0]}" "STOP"
 }
 #==========================================================================================
 copy_status_message() {
+log_func "${FUNCNAME[0]}" "START"
     dialog --title "File Copy" --infobox "Searching for status_message_ip.py..." 8 50
     filepath=$(sudo -n find / -type f -name "status_message_ip.py" 2>/dev/null | grep "/svxlink/" | head -n1)
     if [[ -z "$filepath" ]]; then
-        dialog --title "File Copy" --msgbox "âŒ Could not find status_message_ip.py on the system." 10 50
+        dialog --title "File Copy" --msgbox "Could not find status_message_ip.py on the system." 10 50
         clear; exit 1
     fi
 
     dialog --title "File Found" --infobox "Copying status_message_ip.py to /usr/bin..." 8 50
     if sudo cp -f "$filepath" /usr/bin/status_message_ip.py; then
-        dialog --title "Success" --msgbox "âœ… File copied successfully:\n/usr/bin/status_message_ip.py" 10 60
+        dialog --title "Success" --msgbox "File copied successfully:\n/usr/bin/status_message_ip.py" 10 60
     else
-        dialog --title "Error" --msgbox "âŒ Failed to copy status_message_ip.py" 10 60
+        dialog --title "Error" --msgbox "Failed to copy status_message_ip.py" 10 60
         clear; exit 1
     fi
+log_func "${FUNCNAME[0]}" "STOP"
 }
 #==========================================================================================
 update_profile() {
+log_func "${FUNCNAME[0]}" "START"
     dialog --title "Profile Update" --infobox "Updating /etc/profile with SvxLink paths..." 8 60
     sudo cp /etc/profile /etc/profile.bak.$(date +%Y%m%d-%H%M%S)
 
@@ -86,25 +99,29 @@ update_profile() {
     sudo sed -i "s|^ PATH=.*games\"| PATH=\"/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/local/games:/usr/games:$default_install_path/bin\"|" /etc/profile
 
     new_paths=$(grep '^ *PATH=' /etc/profile | head -n2)
-    dialog --title "Update Profile" --msgbox "âœ… Updated profile with:\n$default_install_path/bin\n\nNew PATH entries:\n$new_paths\n\nBackup saved in /etc/profile.bak.TIMESTAMP" 15 70
+    dialog --title "Update Profile" --msgbox "Updated profile with:\n$default_install_path/bin\n\nNew PATH entries:\n$new_paths\n\nBackup saved in /etc/profile.bak.TIMESTAMP" 15 70
+log_func "${FUNCNAME[0]}" "STOP"
 }
 
 #==========================================================================================
 update_ld_conf() {
+log_func "${FUNCNAME[0]}" "START"
     conf_file="/etc/ld.so.conf.d/svxlink.libs.conf"
     dialog --title "Library Path" --infobox "Configuring library search path..." 8 50
 
     if sudo grep -qx "$default_install_path/lib" "$conf_file" 2>/dev/null; then
-        dialog --title "Library Path" --msgbox "â„¹ï¸ No changes needed. Already contains:\n$default_install_path/lib" 12 60
+        dialog --title "Library Path" --msgbox "No changes needed. Already contains:\n$default_install_path/lib" 12 60
     else
         echo "$default_install_path/lib" | sudo tee "$conf_file" >/dev/null
         dialog --title "Library Path" --infobox "Running ldconfig to refresh cache..." 8 50
         sudo ldconfig -v
-        dialog --title "Library Path" --msgbox "âœ… Added to ld.so.conf:\n$default_install_path/lib" 10 60
+        dialog --title "Library Path" --msgbox "Added to ld.so.conf:\n$default_install_path/lib" 10 60
     fi
+log_func "${FUNCNAME[0]}" "STOP"
 }
 #==========================================================================================
 create_svxlink_service() {
+log_func "${FUNCNAME[0]}" "START"
     service_file="/lib/systemd/system/svxlink.service"
 
     sudo tee "$service_file" >/dev/null <<EOF
@@ -135,9 +152,11 @@ EOF
     sudo systemctl enable svxlink   # <--- enable autostart
     sudo systemctl start svxlink    # <--- optional: start immediately
     dialog --title "Service Enabled" -
+log_func "${FUNCNAME[0]}" "STOP"
  }   
 #==========================================================================================
 create_log_dir() {
+log_func "${FUNCNAME[0]}" "START"
     dialog --title "Log Setup" --infobox "Creating log directory..." 8 50
     log_dir="$default_install_path/var/log"
     log_file="$log_dir/svxlink.log"
@@ -146,17 +165,19 @@ create_log_dir() {
     sudo touch "$log_file"
     sudo chown "$USER":"$USER" "$log_file"
 
-    dialog --title "Log Setup" --msgbox "âœ… Log directory and file created:\n$log_dir\n$log_file" 12 60
+    dialog --title "Log Setup" --msgbox "Log directory and file created:\n$log_dir\n$log_file" 12 60
+log_func "${FUNCNAME[0]}" "STOP"
 }
 #==========================================================================================
 create_svxlink_conf() {
+log_func "${FUNCNAME[0]}" "START"
     USERNAME=$(logname 2>/dev/null || echo "$USER")
     conf_file="$default_install_path/svxlink/svxlink.conf"
 
     # Ask for callsign
     CALLSIGN=$(dialog --title "SvxLink Setup" --inputbox "Enter your callsign:" 8 40 2>&1 >/dev/tty)
     if [[ -z "$CALLSIGN" ]]; then
-        dialog --title "SvxLink Setup" --msgbox "âš ï¸ No callsign entered, aborting config." 8 50
+        dialog --title "SvxLink Setup" --msgbox "No callsign entered, aborting config." 8 50
         return 1
     fi
 
@@ -271,15 +292,17 @@ SYMBOL="/-"
 COMMENT=SvxLink Node - $CALLSIGN
 EOF
 
-    dialog --title "SvxLink Config" --msgbox "âœ… New config created at:\n$conf_file
+    dialog --title "SvxLink Config" --msgbox "New config created at:\n$conf_file
 
 Using callsign: $CALLSIGN
 HID_DEVICE=/dev/$USERNAME
 Base path: $default_install_path" 15 70
+log_func "${FUNCNAME[0]}" "STOP"
 }
 
 #==========================================================================================
 create_module_echolink_conf() {
+log_func "${FUNCNAME[0]}" "START"
     echolink_conf_dir="$default_install_path/svxlink/svxlink.d"
     echolink_conf_file="$echolink_conf_dir/ModuleEchoLink.conf"
 
@@ -337,15 +360,17 @@ DESCRIPTION="You have connected to a SvxLink node,\n" \
 "Antenna: default\n"
 EOF
 
-    dialog --title "ModuleEchoLink Config" --msgbox "âœ… Created:\n$echolink_conf_file
+    dialog --title "ModuleEchoLink Config" --msgbox "Created:\n$echolink_conf_file
 
 EchoLink callsign: ${EL_CALLSIGN}
 Sysop: ${SYSOPNAME}
 Location: ${LOCATION}" 18 70
+log_func "${FUNCNAME[0]}" "STOP"
 }
 
 #================================================================================================================
 run_sa818_menu() {
+log_func "${FUNCNAME[0]}" "START"
     sa818_dir="$default_base_path/src/svxlink/scripts/sa818"
     sa818_menu_file="$sa818_dir/sa818_menu.sh"
 
@@ -356,10 +381,12 @@ run_sa818_menu() {
 
     # Load the script into the current shell with root privileges
     sudo bash -c "source '$sa818_menu_file'; sa818_menu"
+log_func "${FUNCNAME[0]}" "STOP"
 }
 
 #=====================================================================================================
 install_sa818_wrapper() {
+log_func "${FUNCNAME[0]}" "START"
     sa818_py="/opt/svxlink/src/svxlink/scripts/sa818/sa818.py"
     wrapper="/usr/local/bin/sa818"
 
@@ -370,10 +397,12 @@ exec python3 "$sa818_py" "\$@"
 EOF
         sudo chmod +x "$wrapper"
     fi
+log_func "${FUNCNAME[0]}" "STOP"
 }
 
 #==========================================================================================
 install_sa818_shortcut() {
+log_func "${FUNCNAME[0]}" "START"
     sa818_menu_file="/opt/svxlink/src/svxlink/scripts/sa818/sa818_menu.sh"
     shortcut="/usr/local/bin/sa818_menu"
 
@@ -387,10 +416,12 @@ sa818_menu "\$@"
 EOF
         sudo chmod +x "$shortcut"
     fi
+log_func "${FUNCNAME[0]}" "STOP"
 }
 
 #==========================================================================================
 check_sa818_module() {
+log_func "${FUNCNAME[0]}" "START"
     dialog --title "SA818 Check" --infobox "Testing SA818 module via /dev/serial0 @ 9600 baud..." 8 60
     sleep 2
 
@@ -398,16 +429,18 @@ check_sa818_module() {
     RC=$?
 
     if [[ $RC -ne 0 ]]; then
-        dialog --title "SA818 Check" --msgbox "âš ï¸ Failed to communicate with SA818.\n\nError:\n$OUTPUT" 15 70
+        dialog --title "SA818 Check" --msgbox "Failed to communicate with SA818.\n\nError:\n$OUTPUT" 15 70
         return 1
     fi
 
-    dialog --title "SA818 Check" --msgbox "âœ… SA818 module responded:\n\n$OUTPUT" 15 70
+    dialog --title "SA818 Check" --msgbox "SA818 module responded:\n\n$OUTPUT" 15 70
     return 0
+log_func "${FUNCNAME[0]}" "STOP"
 }
 
 #=====================================================================================================
 check_serial0_access() {
+log_func "${FUNCNAME[0]}" "STOP"
     dialog --title "UART Check" --infobox "Verifying that /dev/serial0 is accessible..." 8 50
     sleep 1
 
@@ -423,11 +456,12 @@ except Exception as e:
 EOF
 
     if [[ $? -ne 0 ]]; then
-        dialog --title "UART Check" --msgbox "âš ï¸ Could not open /dev/serial0 at 9600 baud.\nCheck wiring, udev rules, or group membership." 12 60
+        dialog --title "UART Check" --msgbox "Could not open /dev/serial0 at 9600 baud.\nCheck wiring, udev rules, or group membership." 12 60
         exit 1
     else
-        dialog --title "UART Check" --msgbox "âœ… /dev/serial0 is accessible at 9600 baud.\nUART and permissions are OK." 10 60
+        dialog --title "UART Check" --msgbox "/dev/serial0 is accessible at 9600 baud.\nUART and permissions are OK." 10 60
     fi
+log_func "${FUNCNAME[0]}" "STOP"
 }
 
 #=====================================================================================================
@@ -441,7 +475,7 @@ run_with_log() {
     local rc=$?
 
     if [[ $rc -ne 0 ]]; then
-        dialog --title "Error" --msgbox "âš ï¸ $func failed.\n\nSee log:\n$logfile" 12 60
+        dialog --title "Error" --msgbox "func failed.\n\nSee log:\n$logfile" 12 60
         exit $rc
     else
         echo "=== $func completed OK at $(date) ===" | sudo tee -a "$logfile" >/dev/null
@@ -450,6 +484,7 @@ run_with_log() {
 
 #==========================================================================================
 install_cm108_udev_rule() {
+log_func "${FUNCNAME[0]}" "START"
     dialog --title "CM108 Setup" --infobox "Configuring CM108 USB soundcard...\n\nPlease wait..." 10 60
     sleep 2
 
@@ -481,15 +516,17 @@ EOF
     sudo udevadm control --reload-rules
     sudo udevadm trigger
 
-    dialog --title "CM108 Setup" --msgbox "âœ… CM108 rule installed.\n\nâ€¢ PulseAudio will ignore the device\nâ€¢ /dev/${callsign_lc} symlink created\nâ€¢ Using card: plughw:${card_num},0" 15 60
+    dialog --title "CM108 Setup" --msgbox "CM108 rule installed.\n\nPulseAudio will ignore the device\    /dev/${callsign_lc} symlink created\ Using card: plughw:${card_num},0" 15 60
+log_func "${FUNCNAME[0]}" "STOP"
 }
 
 #==========================================================================================
 fix_sa818_menu_paths() {
+log_func "${FUNCNAME[0]}" "START"
     local sa818_menu_file="$default_source_path/src/svxlink/scripts/sa818/sa818_menu.sh"
 
     if [[ ! -f "$sa818_menu_file" ]]; then
-        dialog --title "SA818 Menu Fix" --msgbox "⚠️ Could not find $sa818_menu_file" 10 60
+        dialog --title "SA818 Menu Fix" --msgbox "Could not find $sa818_menu_file" 10 60
         return 1
     fi
 
@@ -500,7 +537,8 @@ fix_sa818_menu_paths() {
     sudo sed -i "s|^SA818_CONF=.*|SA818_CONF=\"$default_source_path/src/svxlink/scripts/sa818/sa818.conf\"|" "$sa818_menu_file"
     sudo sed -i "s|^logfile=.*|logfile=$default_install_path/var/log/sa818.log|" "$sa818_menu_file"
 
-    dialog --title "SA818 Menu Fix" --msgbox "✅ Updated sa818_menu.sh paths:\n\nSA818_CONF → $default_source_path/src/svxlink/scripts/sa818/sa818.conf\nlogfile → $default_install_path/var/log/sa818.log" 15 70
+    dialog --title "SA818 Menu Fix" --msgbox "Updated sa818_menu.sh paths:\n\nSA818_CONF $default_source_path/src/svxlink/scripts/sa818/sa818.conf\nlogfile $default_install_path/var/log/sa818.log" 15 70
+log_func "${FUNCNAME[0]}" "STOP"
 }
 #==========================================================================================
 # --- RUN MAIN ---
