@@ -314,7 +314,7 @@ Info:
     
 ⚠️ Note: Some steps may take several minutes. Do not interrupt.
 
-Press <OK> to continue." 20 70
+Press <OK> to continue." 20 80
 }
 #=========================================================================================
 # --- RUN MAIN ---
