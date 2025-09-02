@@ -138,8 +138,10 @@ WorkingDirectory=$default_install_path/svxlink
 WantedBy=multi-user.target
 EOF
 
-    sudo systemctl daemon-reload
-    dialog --title "Systemd Service" --msgbox "✔ Service created:\n$service_file" 12 70
+   sudo systemctl daemon-reload
+    sudo systemctl enable svxlink   # <--- enable autostart
+    #sudo systemctl start svxlink    # <--- optional: start immediately
+    dialog --title "Service Enabled" --msgbox "✅ SvxLink service enabled and started.\n\nIt will run automatically at boot." 12 70
 }
 
 #==========================================================================================
