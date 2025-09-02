@@ -374,48 +374,5 @@ install_sounds() {
 }
 
 #==========================================================================================
-install_cmake_and_deps() {
-    if dpkg -s cmake 2>/dev/null | grep -q "Status: install ok installed"; then
-        dialog --title "Dependencies" --infobox "✅ CMake is already installed.\n\nSkipping dependency installation." 10 60
-        sleep 2
-        return 0
-    fi
-
-    dialog --title "Dependencies" --infobox "⚙️ Installing build dependencies...\n\nPlease wait, this may take a few minutes." 10 60
-    sleep 2
-
-    packages=(
-        g++ cmake make libsigc++-2.0-dev libgsm1-dev libpopt-dev tcl8.6-dev
-        libgcrypt20-dev libspeex-dev libasound2-dev libopus-dev librtlsdr-dev
-        doxygen groff alsa-utils vorbis-tools curl libcurl4-openssl-dev git
-        rtl-sdr libjsoncpp-dev ladspa-sdk libogg0 libogg-dev libgpiod-dev
-    )
-
-    total=${#packages[@]}
-    count=0
-
-    {
-        for pkg in "${packages[@]}"; do
-            count=$((count+1))
-            percent=$(( count * 100 / total ))
-
-            echo "XXX"
-            echo "$percent"
-            echo "Installing $pkg ($count of $total)..."
-            echo "XXX"
-
-            sudo apt-get install -y "$pkg" >/dev/null 2>&1
-        done
-    } | dialog --title "Installing Dependencies" --gauge "Preparing to install..." 15 70 0
-
-    dialog --title "Dependencies" --msgbox "✅ All required packages have been installed." 10 60
-}
-
-
-#==========================================================================================
-# --- RUN MAIN ---
-main
-
-#==========================================================================================
 # --- RUN MAIN ---
 main
