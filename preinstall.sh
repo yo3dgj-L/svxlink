@@ -1,4 +1,4 @@
-#!/bin/bash
+anny #!/bin/bash
 clear
 
 # --- GLOBALS ---
