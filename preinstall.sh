@@ -27,6 +27,7 @@ main() {
         run_with_log install_pyserial
         run_with_log enable_uart_and_serial0
         dialog --title "Reboot Required" --msgbox "✅ UART enabled and udev rule installed.\n\nSystem must reboot now." 12 60
+        clear
         sudo reboot
     else
         dialog --title "SA818 Skipped" --msgbox "⚠️ You chose not to configure SA818 hardware.\n\nSkipping UART and serial setup." 12 60
