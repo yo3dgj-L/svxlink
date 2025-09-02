@@ -105,7 +105,7 @@ log_func "${FUNCNAME[0]}" "STOP"
 
 #==========================================================================================
 update_ld_conf() {
-log_func "${FUNCNAME[0]}" "START"
+    log_func "${FUNCNAME[0]}" "START"
     conf_file="/etc/ld.so.conf.d/svxlink.libs.conf"
     dialog --title "Library Path" --infobox "Configuring library search path..." 8 50
 
@@ -114,10 +114,11 @@ log_func "${FUNCNAME[0]}" "START"
     else
         echo "$default_install_path/lib" | sudo tee "$conf_file" >/dev/null
         dialog --title "Library Path" --infobox "Running ldconfig to refresh cache..." 8 50
-        sudo ldconfig -v
+        # run silently, log output to trace
+        sudo ldconfig >> /var/log/svxlink-install/install_trace.log 2>&1
         dialog --title "Library Path" --msgbox "Added to ld.so.conf:\n$default_install_path/lib" 10 60
     fi
-log_func "${FUNCNAME[0]}" "STOP"
+    log_func "${FUNCNAME[0]}" "STOP"
 }
 #==========================================================================================
 create_svxlink_service() {
