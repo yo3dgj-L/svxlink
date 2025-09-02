@@ -10,6 +10,7 @@ main() {
     LOG_DIR="/var/log/svxlink-install"
     sudo mkdir -p "$LOG_DIR"
 
+    welcome_text
     check_dialog
     ask_paths
     ask_sa818_hardware
@@ -290,6 +291,26 @@ EOF
     sudo reboot
 }
 
+#=========================================================================================
+welcome_text() {
+dialog --title "Welcome to SvxLink Installer" --msgbox "\
+Welcome to the SvxLink installation script!
+
+This script will:
+  • Check and install all required dependencies
+  • Build and install SvxLink from source
+  • Configure your system paths and services
+  • Install English Heather voice prompts
+  • Optionally configure SA818 hardware support
+
+Info:
+   I you don't have a addon radio board like SA818 with sound chip
+   you have to configure you hardware yourself :
+    
+⚠️ Note: Some steps may take several minutes. Do not interrupt.
+
+Press <OK> to continue." 20 70
+}
 #=========================================================================================
 # --- RUN MAIN ---
 main
