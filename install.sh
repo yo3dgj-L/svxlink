@@ -44,6 +44,7 @@ main() {
     fi
 
     install_cm108_udev_rule
+         turn_agc_off
 
     dialog --title "Done" --msgbox "All operations completed successfully." 8 50
     clear
@@ -595,6 +596,14 @@ fix_sa818_menu_paths() {
 
     dialog --title "SA818 Menu Fix" --msgbox "Updated sa818_menu.sh paths:\n\nSA818_CONF $default_source_path/src/svxlink/scripts/sa818/sa818.conf\nlogfile $default_install_path/var/log/sa818.log" 15 70
 #log_func "${FUNCNAME[0]}" "STOP"
+}
+#====================================================================================================
+
+turn_agc_off()
+{
+    dialog --title "Done" --msgbox "Turn OFF amixer Mute." 8 50
+    sudo amixer -c 3 cset numid=7 off
+
 }
 #==========================================================================================
 # --- RUN MAIN ---
