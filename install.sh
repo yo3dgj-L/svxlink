@@ -9,6 +9,7 @@ default_base_path=""
 main() {
     LOG_DIR="/var/log/svxlink-install"
     sudo mkdir -p "$LOG_DIR"
+         create_log_dir
 
     dialog --title "Installer" --infobox "Detecting installation paths..." 8 50
 
@@ -27,7 +28,6 @@ main() {
     pdate_profile
     update_ld_conf
     create_svxlink_service
-    create_log_dir
     create_svxlink_conf
     create_module_echolink_conf
     fix_sa818_menu_paths
@@ -353,7 +353,7 @@ create_module_echolink_conf() {
   [[ "$EL_CALLSIGN" != *-L ]] && EL_CALLSIGN="${EL_CALLSIGN}-L"
 
   # Ask for the rest (mask the password)
-  PASSWORD=$(dialog --title "EchoLink Setup" --passwordbox "Enter your EchoLink password:" 8 50 2>&1 >/dev/tty) || return 1
+  PASSWORD=$(dialog --title "EchoLink Setup"    --inputbox "Enter your EchoLink password:" 8 50 2>&1 >/dev/tty) || return 1
   SYSOPNAME=$(dialog --title "EchoLink Setup" --inputbox "Enter your Sysop name:" 8 50 2>&1 >/dev/tty) || return 1
   QTH_INPUT=$(dialog --title "EchoLink Setup" --inputbox "Enter your location/QTH (e.g. Bucharest):" 8 50 2>&1 >/dev/tty) || return 1
 
@@ -580,10 +580,10 @@ EOF
 #==========================================================================================
 fix_sa818_menu_paths() {
 #log_func "${FUNCNAME[0]}" "START"
-    local sa818_menu_file="$default_source_path/src/svxlink/scripts/sa818/sa818_menu.sh"
+    local sa818_menu_file="$default_install_path/src/svxlink/scripts/sa818/sa818_menu.sh"
 
     if [[ ! -f "$sa818_menu_file" ]]; then
-        dialog --title "SA818 Menu Fix" --msgbox "Could not find $sa818_menu_file" 10 60
+        dialog --title "SA818 Menu Fix" --msgbox "Could not find $sa818_menu_file" 10 70
         return 1
     fi
 
@@ -603,6 +603,7 @@ turn_agc_off()
 {
     dialog --title "Done" --msgbox "Turn OFF amixer Mute." 8 50
     sudo amixer -c 3 cset numid=7 off
+         sudo alsactl store
 
 }
 #==========================================================================================
