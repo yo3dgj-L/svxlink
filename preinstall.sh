@@ -23,7 +23,8 @@ main() {
     run_make_install
     change_files
     create_bash_aliases
-
+    install_sounds
+    
     if [[ "$SKIP_SA818" -eq 0 ]]; then
         run_with_log install_pyserial
         run_with_log enable_uart_and_serial0
@@ -35,7 +36,7 @@ main() {
         dialog --title "SA818 Skipped" --msgbox "⚠️ You chose not to configure SA818 hardware.\n\nSkipping UART and serial setup." 12 60
     fi
 
-    install_sounds
+    
 }
 
 #=========================================================================================
