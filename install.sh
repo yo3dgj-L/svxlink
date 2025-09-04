@@ -518,7 +518,7 @@ EOF
 #=====================================================================================================
 
 #==========================================================================================
-install_cm108_udev_rule() {
+install_cm108_udev_rule1() {
 
     dialog --title "CM108 Setup" --infobox "Configuring CM108 USB soundcard...\n\nPlease wait..." 10 60
     sleep 2
@@ -554,6 +554,37 @@ EOF
     dialog --title "CM108 Setup" --msgbox "CM108 rule installed.\n\nPulseAudio will ignore the device\    /dev/${callsign_lc} symlink created\ Using card: plughw:${card_num},0" 15 60
 
 }
+#=========================================================================================
+
+install_cm108_udev_rule() {
+    dialog --title "CM108 Setup" --infobox "Configuring CM108 USB soundcard...\nPlease wait..." 8 60
+    sleep 1
+
+    # callsign for hidraw symlink (lowercase)
+    local callsign_lc
+    callsign_lc=$(echo "${CALLSIGN:-svxlink}" | tr '[:upper:]' '[:lower:]')
+
+    # Use stable ALSA card *name* (between [])
+    local card_id
+    card_id=$(awk -F'[][]' '/USB[- ]Audio|C[- ]Media|CM108/ {print $2; exit}' /proc/asound/cards)
+    : "${card_id:=Device}"
+
+    RX_DEV="alsa:plughw:CARD=${card_id},DEV=0"
+    TX_DEV="$RX_DEV"
+
+    # udev: ignore by PulseAudio + stable hidraw symlink
+    cat <<EOF | sudo tee /etc/udev/rules.d/99-cm108.rules >/dev/null
+ATTRS{idVendor}=="0d8c", ATTRS{idProduct}=="0012", ENV{PULSE_IGNORE}="1"
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="0d8c", ATTRS{idProduct}=="0012", SYMLINK+="${callsign_lc}", MODE="0666"
+EOF
+    sudo udevadm control --reload-rules
+    sudo udevadm trigger
+
+    dialog --title "CM108 Setup" --msgbox "CM108 rule installed.\n\
+ALSA device set to:\n  ${RX_DEV}\n\
+HID symlink:\n  /dev/${callsign_lc}" 12 70
+}
+
 
 #==========================================================================================
 fix_sa818_menu_paths() {
