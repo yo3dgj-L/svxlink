@@ -40,7 +40,7 @@ main() {
 
     	dialog --title "Done" --msgbox "All operations completed successfully system will reboot." 8 50
     	clear
-	remove_reboot_pointer
+	sudo reboot
     	#exit 0
 }
 
@@ -585,17 +585,6 @@ turn_agc_off()
 
 }
 #==========================================================================================
-remove_reboot_pointer()
-{
-# --- Cleanup and reboot after successful install.sh ---
-set -e
-rm -f /opt/.run_install_after_reboot
-systemctl disable --now firstboot-install.service || true
-clear
-reboot
-}
-#=====================================================================================================
-
 copy_proxy_sounds() {
   src="$default_base_path/src/svxlink/scripts/sounds"
   dst="$default_install_path/share/svxlink/sounds/en_US-heather-16k/Core"
@@ -613,10 +602,6 @@ dialog --title "Copy Sounds" --infobox "copy extra sound files please wait...." 
 to:
   $dst" 10 70
 }
-
-
-
-
 
 #=====================================================================================================
 
