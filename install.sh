@@ -7,53 +7,46 @@ default_base_path=""
 
 # --- MAIN FLOW (for readability only) ---
 main() {
-    LOG_DIR="/var/log/svxlink-install"
-    sudo mkdir -p "$LOG_DIR"
-         create_log_dir
+             
+    	dialog --title "Installer" --infobox "Detecting installation paths..." 8 50
+	get_install_path
+	dialog --title "Install Path" --msgbox "Installation path detected:\n\n$default_install_path" 10 60
 
-    dialog --title "Installer" --infobox "Detecting installation paths..." 8 50
+	copy_status_message
+                  copy_proxy_sounds
+	update_config_txt
+	update_profile
+	update_ld_conf
+	create_svxlink_service
+	create_svxlink_conf
+	create_module_echolink_conf
+	create_log_dir
+	fix_sa818_menu_paths
 
-#log_func() {
-    #local func="$1"
-    #local status="$2"
-    #local logfile="/var/log/svxlink-install/install_trace.log"
 
-    #echo "[$(date +'%Y-%m-%d %H:%M:%S')] $func $status" | sudo tee -a "$logfile" >/dev/null
-#}
-    get_install_path
-    dialog --title "Install Path" --msgbox "Installation path detected:\n\n$default_install_path" 10 60
+	if [[ "$skip_sa818" -eq 0 ]]; then
+        	install_sa818_wrapper
+        	install_sa818_shortcut
+        	check_serial0_access
+        	run_sa818_menu
+        	check_sa818_module || exit 1
+        	dialog --title "SA818 Setup" --msgbox "SA818 configured successfully.\nUse:\n  sa818 --help\n  sa818_menu" 12 60
+    	else
+        	dialog --title "SA818 Skipped" --msgbox "SA818 support not installed." 10 60
+    	fi
 
-    copy_status_message
-    update_config_txt
-    pdate_profile
-    update_ld_conf
-    create_svxlink_service
-    create_svxlink_conf
-    create_module_echolink_conf
-    fix_sa818_menu_paths
+    	install_cm108_udev_rule
+        turn_agc_off
 
-    if [[ "$skip_sa818" -eq 0 ]]; then
-        install_sa818_wrapper
-        install_sa818_shortcut
-        check_serial0_access
-        run_sa818_menu
-         check_sa818_module || exit 1
-        dialog --title "SA818 Setup" --msgbox "SA818 configured successfully.\nUse:\n  sa818 --help\n  sa818_menu" 12 60
-    else
-        dialog --title "SA818 Skipped" --msgbox "SA818 support not installed." 10 60
-    fi
-
-    install_cm108_udev_rule
-         turn_agc_off
-
-    dialog --title "Done" --msgbox "All operations completed successfully." 8 50
-    clear
-    exit 0
+    	dialog --title "Done" --msgbox "All operations completed successfully system will reboot." 8 50
+    	clear
+	remove_reboot_pointer
+    	#exit 0
 }
 
 #==========================================================================================
 get_install_path() {
-#log_func "${FUNCNAME[0]}" "START"
+
     dialog --title "Paths" --infobox "Looking for install_path.ini..." 10 50
     install_file=$(sudo -n find / -type f -name "install_path.ini" 2>/dev/null | head -n1)
     if [[ -z "$install_file" ]]; then
@@ -69,11 +62,11 @@ get_install_path() {
     default_source_path=${default_source_path%/}
     default_install_path=${default_install_path%/}
     default_base_path=${default_base_path%/}
-#log_func "${FUNCNAME[0]}" "STOP"
+
 }
 #==========================================================================================
 copy_status_message() {
-#log_func "${FUNCNAME[0]}" "START"
+
     dialog --title "File Copy" --infobox "Searching for status_message_ip.py..." 8 50
     filepath=$(sudo -n find / -type f -name "status_message_ip.py" 2>/dev/null | grep "/svxlink/" | head -n1)
     if [[ -z "$filepath" ]]; then
@@ -88,11 +81,11 @@ copy_status_message() {
         dialog --title "Error" --msgbox "Failed to copy status_message_ip.py" 10 60
         clear; exit 1
     fi
-#log_func "${FUNCNAME[0]}" "STOP"
+
 }
 #==========================================================================================
 update_profile() {
-  #log_func "${FUNCNAME[0]}" "START"
+  
 
   # Resolve target bin dir; never empty
   local base="${default_install_path:-/opt/mysvxlink}"
@@ -136,12 +129,12 @@ update_profile() {
   new_lines=$(grep -n '^[[:space:]]*PATH="' /etc/profile | head -n2)
   dialog --title "Update Profile" --msgbox "Updated PATH to include:\n${tbin}\n\nNew PATH lines:\n${new_lines}\n\nBackup saved at:\n${bkp}" 16 150
 
-  #log_func "${FUNCNAME[0]}" "STOP"
+  
 }
 
 #==========================================================================================
 update_ld_conf() {
-    #log_func "${FUNCNAME[0]}" "START"
+    
     conf_file="/etc/ld.so.conf.d/svxlink.libs.conf"
     dialog --title "Library Path" --infobox "Configuring library search path..." 8 50
 
@@ -151,14 +144,15 @@ update_ld_conf() {
         echo "$default_install_path/lib" | sudo tee "$conf_file" >/dev/null
         dialog --title "Library Path" --infobox "Running ldconfig to refresh cache..." 8 50
         # run silently, log output to trace
-        sudo ldconfig -v >> /var/log/svxlink-install/install_trace.log 2>&1
+        sudo ldconfig -v 
+# >> /var/log/svxlink-install/install_trace.log 2>&1
         dialog --title "Library Path" --msgbox "Added to ld.so.conf:\n$default_install_path/lib" 10 60
     fi
-    #log_func "${FUNCNAME[0]}" "STOP"
+    
 }
 #==========================================================================================
 create_svxlink_service() {
-#log_func "${FUNCNAME[0]}" "START"
+
     service_file="/lib/systemd/system/svxlink.service"
 
     sudo tee "$service_file" >/dev/null <<EOF
@@ -189,11 +183,11 @@ EOF
     sudo systemctl enable svxlink   # <--- enable autostart
     sudo systemctl start svxlink    # <--- optional: start immediately
     dialog --title "Service Enabled" -
-#log_func "${FUNCNAME[0]}" "STOP"
+
  }   
 #==========================================================================================
 create_log_dir() {
-#log_func "${FUNCNAME[0]}" "START"
+
     dialog --title "Log Setup" --infobox "Creating log directory..." 8 50
     log_dir="$default_install_path/var/log"
     log_file="$log_dir/svxlink.log"
@@ -203,11 +197,11 @@ create_log_dir() {
     sudo chown "$USER":"$USER" "$log_file"
 
     dialog --title "Log Setup" --msgbox "Log directory and file created:\n$log_dir\n$log_file" 12 60
-#log_func "${FUNCNAME[0]}" "STOP"
+
 }
 #==========================================================================================
 create_svxlink_conf() {
-#log_func "${FUNCNAME[0]}" "START"
+
     USERNAME=$(logname 2>/dev/null || echo "$USER")
     conf_file="$default_install_path/svxlink/svxlink.conf"
 
@@ -334,12 +328,12 @@ EOF
 Using callsign: $CALLSIGN
 HID_DEVICE=/dev/$USERNAME
 Base path: $default_install_path" 15 70
-#log_func "${FUNCNAME[0]}" "STOP"
+
 }
 
 #==========================================================================================
 create_module_echolink_conf() {
-  #log_func "${FUNCNAME[0]}" "START"
+  
   echolink_conf_dir="$default_install_path/svxlink/svxlink.d"
   echolink_conf_file="$echolink_conf_dir/ModuleEchoLink.conf"
 
@@ -421,13 +415,13 @@ EchoLink callsign: ${EL_CALLSIGN}
 Sysop: ${SYSOPNAME}
 Location: ${LOCATION}" 18 70
 
-  #log_func "${FUNCNAME[0]}" "STOP"
+  
 }
 
 
 #================================================================================================================
 run_sa818_menu() {
-#log_func "${FUNCNAME[0]}" "START"
+
     sa818_dir="$default_base_path/src/svxlink/scripts/sa818"
     sa818_menu_file="$sa818_dir/sa818_menu.sh"
 
@@ -438,12 +432,12 @@ run_sa818_menu() {
 
     # Load the script into the current shell with root privileges
     sudo bash -c "source '$sa818_menu_file'; sa818_menu"
-#log_func "${FUNCNAME[0]}" "STOP"
+
 }
 
 #=====================================================================================================
 install_sa818_wrapper() {
-#log_func "${FUNCNAME[0]}" "START"
+
     sa818_py="/opt/svxlink/src/svxlink/scripts/sa818/sa818.py"
     wrapper="/usr/local/bin/sa818"
 
@@ -454,12 +448,12 @@ exec python3 "$sa818_py" "\$@"
 EOF
         sudo chmod +x "$wrapper"
     fi
-#log_func "${FUNCNAME[0]}" "STOP"
+
 }
 
 #==========================================================================================
 install_sa818_shortcut() {
-#log_func "${FUNCNAME[0]}" "START"
+
     sa818_menu_file="/opt/svxlink/src/svxlink/scripts/sa818/sa818_menu.sh"
     shortcut="/usr/local/bin/sa818_menu"
 
@@ -473,12 +467,12 @@ sa818_menu "\$@"
 EOF
         sudo chmod +x "$shortcut"
     fi
-#log_func "${FUNCNAME[0]}" "STOP"
+
 }
 
 #==========================================================================================
 check_sa818_module() {
-#log_func "${FUNCNAME[0]}" "START"
+
     dialog --title "SA818 Check" --infobox "Testing SA818 module via /dev/serial0 @ 9600 baud..." 8 60
     sleep 2
 
@@ -492,12 +486,12 @@ check_sa818_module() {
 
     dialog --title "SA818 Check" --msgbox "SA818 module responded:\n\n$OUTPUT" 15 70
     return 0
-#log_func "${FUNCNAME[0]}" "STOP"
+
 }
 
 #=====================================================================================================
 check_serial0_access() {
-#log_func "${FUNCNAME[0]}" "STOP"
+
     dialog --title "UART Check" --infobox "Verifying that /dev/serial0 is accessible..." 8 50
     sleep 1
 
@@ -518,30 +512,14 @@ EOF
     else
         dialog --title "UART Check" --msgbox "/dev/serial0 is accessible at 9600 baud.\nUART and permissions are OK." 10 60
     fi
-#log_func "${FUNCNAME[0]}" "STOP"
+
 }
 
 #=====================================================================================================
-run_with_log() {
-    local func="$1"
-    shift
-    local logfile="$LOG_DIR/${func}.log"
-
-    echo "=== Running $func at $(date) ===" | sudo tee "$logfile" >/dev/null
-    $func "$@" >> >(sudo tee -a "$logfile") 2>&1
-    local rc=$?
-
-    if [[ $rc -ne 0 ]]; then
-        dialog --title "Error" --msgbox "func failed.\n\nSee log:\n$logfile" 12 60
-        exit $rc
-    else
-        echo "=== $func completed OK at $(date) ===" | sudo tee -a "$logfile" >/dev/null
-    fi
-}
 
 #==========================================================================================
 install_cm108_udev_rule() {
-#log_func "${FUNCNAME[0]}" "START"
+
     dialog --title "CM108 Setup" --infobox "Configuring CM108 USB soundcard...\n\nPlease wait..." 10 60
     sleep 2
 
@@ -574,13 +552,13 @@ EOF
     sudo udevadm trigger
 
     dialog --title "CM108 Setup" --msgbox "CM108 rule installed.\n\nPulseAudio will ignore the device\    /dev/${callsign_lc} symlink created\ Using card: plughw:${card_num},0" 15 60
-#log_func "${FUNCNAME[0]}" "STOP"
+
 }
 
 #==========================================================================================
 fix_sa818_menu_paths() {
-#log_func "${FUNCNAME[0]}" "START"
-    local sa818_menu_file="$default_install_path/src/svxlink/scripts/sa818/sa818_menu.sh"
+
+    local sa818_menu_file="$default_base_path/src/svxlink/scripts/sa818/sa818_menu.sh"
 
     if [[ ! -f "$sa818_menu_file" ]]; then
         dialog --title "SA818 Menu Fix" --msgbox "Could not find $sa818_menu_file" 10 70
@@ -591,11 +569,11 @@ fix_sa818_menu_paths() {
     sleep 2
 
     # Replace SA818_CONF and logfile lines
-    sudo sed -i "s|^SA818_CONF=.*|SA818_CONF=\"$default_source_path/src/svxlink/scripts/sa818/sa818.conf\"|" "$sa818_menu_file"
+    sudo sed -i "s|^SA818_CONF=.*|SA818_CONF=\"$default_base_path/src/svxlink/scripts/sa818/sa818.conf\"|" "$sa818_menu_file"
     sudo sed -i "s|^logfile=.*|logfile=$default_install_path/var/log/sa818.log|" "$sa818_menu_file"
 
     dialog --title "SA818 Menu Fix" --msgbox "Updated sa818_menu.sh paths:\n\nSA818_CONF $default_source_path/src/svxlink/scripts/sa818/sa818.conf\nlogfile $default_install_path/var/log/sa818.log" 15 70
-#log_func "${FUNCNAME[0]}" "STOP"
+
 }
 #====================================================================================================
 
@@ -607,6 +585,43 @@ turn_agc_off()
 
 }
 #==========================================================================================
+remove_reboot_pointer()
+{
+# --- Cleanup and reboot after successful install.sh ---
+set -e
+rm -f /opt/.run_install_after_reboot
+systemctl disable --now firstboot-install.service || true
+clear
+reboot
+}
+#=====================================================================================================
+
+copy_proxy_sounds() {
+  src="$default_base_path/src/svxlink/scripts/sounds"
+  dst="$default_install_path/share/svxlink/sounds/en_US-heather-16k/Core"
+
+dialog --title "Copy Sounds" --infobox "copy extra sound files please wait...." 8 60
+
+  cp -f "$src/proxy_enable.wav"      "$dst/proxy_enable.wav"
+  cp -f "$src/proxy_disable.wav"  "$dst/proxy_disable.wav"
+  chmod 0644 "$dst/proxy_enable.wav" "$dst/proxy_disable.wav" 2>/dev/null || true
+
+  dialog --title "Copy extra Sounds files" --msgbox \
+"Copied:
+  $src/proxy_enable.wav
+  $src/proxy_disable.wav
+to:
+  $dst" 10 70
+}
+
+
+
+
+
+#=====================================================================================================
+
+
+
 # --- RUN MAIN ---
 main
 
