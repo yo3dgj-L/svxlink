@@ -28,7 +28,7 @@ main() {
         install_pyserial
             enable_uart_and_serial0
         #dialog --title "Reboot Required" --msgbox "UART enabled and udev rule installed.\n\nSystem must reboot now." 12 60
-                 dialog --title "Reboot Required" --msgbox "Ã¢Å“â€¦ UART enabled, Bluetooth disabled, serial-getty masked.\n\nSystem must reboot now." 12 60
+                 dialog --title "Reboot Required" --msgbox "UART enabled, Bluetooth disabled, serial-getty masked.\n\nSystem must reboot now." 12 60
                   
         
     else
