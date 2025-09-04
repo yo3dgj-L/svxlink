@@ -1,5 +1,4 @@
-anny #!/bin/bash
-clear
+#!/bin/bash
 
 # --- GLOBALS ---
 default_source_path="/opt/svxlink/src/build"
@@ -28,13 +27,13 @@ main() {
     if [[ "$SKIP_SA818" -eq 0 ]]; then
         install_pyserial
             enable_uart_and_serial0
-        #dialog --title "Reboot Required" --msgbox "âœ… UART enabled and udev rule installed.\n\nSystem must reboot now." 12 60
-                 Dialog --title "Reboot Required" --msgbox "âœ… UART enabled, Bluetooth disabled, serial-getty masked.\n\nSystem must reboot now." 12 60
-                  create_reboot_pointer
+        #dialog --title "Reboot Required" --msgbox "UART enabled and udev rule installed.\n\nSystem must reboot now." 12 60
+                 dialog --title "Reboot Required" --msgbox "Ã¢Å“â€¦ UART enabled, Bluetooth disabled, serial-getty masked.\n\nSystem must reboot now." 12 60
+                  
         
     else
-        dialog --title "SA818 Skipped" --msgbox "âš ï¸ You chose not to configure SA818 hardware.\n\nSkipping UART and serial setup." 12 60
-	create_reboot_pointer
+        dialog --title "SA818 Skipped" --msgbox "You chose not to configure SA818 hardware.\n\nSkipping UART and serial setup." 12 60
+	
     fi
 
     
@@ -44,7 +43,7 @@ main() {
 check_dialog() {
     
     if dpkg -s dialog 2>/dev/null | grep -q 'Status: install ok installed'; then
-        dialog --title "Dialog" --msgbox "âœ… 'dialog' is already installed." 8 40
+        dialog --title "Dialog" --msgbox "dialog' is already installed." 8 40
     else
         sudo apt install dialog -y
     fi
@@ -57,7 +56,7 @@ check_cmake_and_packages() {
     sleep 1
 
     if dpkg -s cmake 2>/dev/null | grep -q "Status: install ok installed"; then
-        dialog --title "Dependencies" --msgbox "âœ… cmake already installed." 8 50
+        dialog --title "Dependencies" --msgbox "cmake already installed." 8 50
     else
         packages=(
             g++ cmake make libsigc++-2.0-dev libgsm1-dev libpopt-dev tcl8.6-dev
@@ -74,7 +73,7 @@ check_cmake_and_packages() {
                 echo "XXX"; echo "$percent"; echo "Installing $pkg ($count of $total)"; echo "XXX"
                 sudo apt-get install -y "$pkg" > /dev/null 2>&1
             done
-        } | dialog --title "Installing vmake and Dependencies" --gauge "Preparing to install..." 15 70 0
+        } | dialog --title "Installing Dependencies" --gauge "Preparing to install..." 15 70 0
     fi
     clear
 }
@@ -84,7 +83,7 @@ check_libssl() {
     dialog --title "Dependencies" --infobox "Checking for libssl-dev..." 8 40
     sleep 1
     if dpkg -s libssl-dev 2>/dev/null | grep -q "Status: install ok installed"; then
-        dialog --title "Dependencies" --msgbox "âœ… libssl-dev already installed." 8 50
+        dialog --title "Dependencies" --msgbox "libssl-dev already installed." 8 50
     else
         {
             echo "XXX"; echo "50"; echo "Installing libssl-dev..."; echo "XXX"
@@ -101,10 +100,10 @@ ensure_svxlink_user() {
     sleep 1
     if id "svxlink" &>/dev/null; then
         sudo usermod -aG audio,plugdev,gpio,dialout svxlink
-        dialog --title "User Setup" --msgbox "âœ… User 'svxlink' exists.\nGroups updated." 10 60
+        dialog --title "User Setup" --msgbox "User 'svxlink' exists.\nGroups updated." 10 60
     else
         sudo useradd -m -G audio,plugdev,gpio,dialout svxlink
-        dialog --title "User Setup" --msgbox "âœ… User 'svxlink' created and added to groups." 10 60
+        dialog --title "User Setup" --msgbox "User 'svxlink' created and added to groups." 10 60
     fi
     clear
 }
@@ -222,7 +221,7 @@ KERNEL=="ttyAMA0", SYMLINK+="serial0", GROUP="dialout", MODE="0660"
 EOF
     sudo udevadm control --reload-rules
     sudo udevadm trigger
-    #dialog --title "Reboot Required" --msgbox "âœ… UART enabled, Bluetooth disabled, serial-getty masked.\n\nSystem must reboot now." 12 60
+    #dialog --title "Reboot Required" --msgbox "UART enabled, Bluetooth disabled, serial-getty masked.\n\nSystem must reboot now." 12 60
     #clear
     #sudo reboot
 }
@@ -235,7 +234,7 @@ change_files() {
     local install_file="$base_source_path/install.sh"
     [[ -f "$sa818_menu_file" ]] && sudo chmod +x "$sa818_menu_file"
     [[ -f "$install_file" ]] && sudo chmod +x "$install_file"
-    dialog --title "Permissions" --msgbox "âœ… Executable set for:\n$sa818_menu_file\n$install_file" 12 60
+    dialog --title "Permissions" --msgbox "Executable set for:\n$sa818_menu_file\n$install_file" 12 60
 }
 
 #=========================================================================================
@@ -249,7 +248,7 @@ install_sounds() {
     dialog --title "Sound Files" --infobox "Installing English Heather sound pack...\nThis may take ~1 minute." 10 60
     sleep 2
     cd "$default_install_path/share/svxlink/sounds" || {
-        dialog --title "Error" --msgbox "âŒ Could not change to $default_install_path/share/svxlink/sounds" 10 60
+        dialog --title "Error" --msgbox "Could not change to $default_install_path/share/svxlink/sounds" 10 60
         exit 1
     }
     {
@@ -262,7 +261,7 @@ install_sounds() {
         echo "XXX"; echo "100"; echo "Cleaning up..."; echo "XXX"
         sudo rm -f svxlink-sounds-en_US-heather-16k-13.12.tar.bz2
     } | dialog --title "Sound Files" --gauge "Installing sound pack..." 12 70 0
-    dialog --title "Sound Files" --msgbox "âœ… Installed at:\n$default_install_path/share/svxlink/sounds/en_US" 12 60
+    dialog --title "Sound Files" --msgbox "Installed at:\n$default_install_path/share/svxlink/sounds/en_US" 12 60
 }
 
 #=========================================================================================
@@ -274,7 +273,7 @@ run_with_log() {
     $func "$@" >> >(sudo tee -a "$logfile") 2>&1
     local rc=$?
     if [[ $rc -ne 0 ]]; then
-        dialog --title "Error" --msgbox "âŒ $func failed.\nSee log: $logfile" 12 60
+        dialog --title "Error" --msgbox "func failed.\nSee log: $logfile" 12 60
         exit $rc
     else
         echo "=== $func completed OK at $(date) ===" | sudo tee -a "$logfile" >/dev/null
@@ -306,17 +305,17 @@ for more information.
 
 
 This script will:
-  â€¢ Check and install all required dependencies
-  â€¢ Build and install SvxLink from source
-  â€¢ Configure your system paths and services
-  â€¢ Install English Heather voice prompts
-  â€¢ Optionally configure SA818 hardware support
+  Check and install all required dependencies
+  Build and install SvxLink from source
+  Configure your system paths and services
+  Install English Heather voice prompts
+  Optionally configure SA818 hardware support
 
 Info:
    I you don't have a addon radio board like SA818 with sound chip
    you have to configure you hardware yourself :
     
-âš ï¸ Note: Some steps may take several minutes. Do not interrupt.
+Note: Some steps may take several minutes. Do not interrupt.
 
 Press <OK> to continue." 30 70
 }
@@ -360,58 +359,8 @@ EOF
         echo -e "\n# Load aliases\nif [ -f ~/.bash_aliases ]; then\n    . ~/.bash_aliases\nfi" | sudo tee -a "$user_home/.bashrc" >/dev/null
     fi
 
-    dialog --title "Bash Aliases" --msgbox "âœ… Aliases file created at:\n$aliases_file\n\nThe following commands are now available:\n  svxlog, svxconf, svxstart, svxstop, svxstatus, svxrestart, down, restart\n\nðŸ‘‰ To activate immediately, run:\n  source ~/.bashrc\n\nOr restart your shell." 18 70
+    dialog --title "Bash Aliases" --msgbox "Aliases file created at:\n$aliases_file\n\nThe following commands are now available:\n  svxlog, svxconf, svxstart, svxstop, svxstatus, svxrestart, down, restart\n\To activate immediately, run:\n  source ~/.bashrc\n\nOr restart your shell." 18 70
 }
-#====================================================================================================
-create_reboot_pointer()
-{
-# --- Schedule /opt/install.sh to run once after reboot ---
-set -e
-
-# 1) marker ("pointer")
-touch /opt/.run_install_after_reboot
-
-# 2) make sure the installer is executable
-chmod +x /opt/install.sh
-
-# 3) systemd unit
-cat >/etc/systemd/system/firstboot-install.service <<'EOF'
-[Unit]
-Description=Run /opt/install.sh once after reboot
-# If you need network during install, keep these two:
-Wants=network-online.target
-After=network-online.target
-
-# Only run when the pointer file exists
-ConditionPathExists=/opt/.run_install_after_reboot
-
-[Service]
-Type=oneshot
-# Log to both journal and a file
-ExecStart=/bin/bash -lc '/opt/install.sh |& tee -a /var/log/svxlink-install/post-install.log'
-
-# If you prefer cleanup here instead of inside /opt/install.sh, uncomment:
-# ExecStartPost=/usr/bin/rm -f /opt/.run_install_after_reboot
-# ExecStartPost=/usr/bin/systemctl disable --now firstboot-install.service
-# ExecStartPost=/usr/bin/systemctl reboot
-
-StandardOutput=journal
-StandardError=inherit
-
-[Install]
-WantedBy=multi-user.target
-EOF
-
-# 4) enable service for next boot
-systemctl daemon-reload
-systemctl enable firstboot-install.service
-
-# 5) reboot into the post-install phase
-clear
-reboot
-}
-
-
 
 #=========================================================================================
 # --- RUN MAIN ---
