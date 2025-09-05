@@ -238,17 +238,6 @@ check_ldconf_for_install_path() {
   return 0
 }
 
-# --- Example usage in your installer ---
-# install_path_svxlink="/opt/mysvxlink"   # set elsewhere in your script
-
-# Check current cache (no ldconfig run):
-if ! check_cache_for_install_path; then
-  # Optionally also ensure it's configured for next time:
-  check_ldconf_for_install_path
-  exit $?
-fi
-
-
 #==========================================================================================
 create_svxlink_service() {
 
