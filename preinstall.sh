@@ -30,7 +30,7 @@ main() {
         #dialog --title "Reboot Required" --msgbox "UART enabled and udev rule installed.\n\nSystem must reboot now." 12 60
                  dialog --title "Reboot Required" --msgbox "UART enabled, Bluetooth disabled, serial-getty masked.\n\nSystem must reboot now." 12 60
                 clear
-				Sudo reboot
+				sudo reboot
         
     else
         dialog --title "SA818 Skipped" --msgbox "You chose not to configure SA818 hardware.\n\nSkipping UART and serial setup." 12 60
