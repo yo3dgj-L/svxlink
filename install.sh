@@ -16,8 +16,7 @@ main() {
                   copy_proxy_sounds
 	update_config_txt
 	update_profile
-	update_ld_conf
-    check_cache_for_install_path
+	
 	create_svxlink_service
 	create_svxlink_conf
 	create_module_echolink_conf
@@ -37,6 +36,8 @@ main() {
     	fi
 
     	install_cm108_udev_rule
+	    update_ld_conf
+        check_cache_for_install_path
         turn_agc_off
 
     	dialog --title "Done" --msgbox "All operations completed successfully system will reboot." 8 50
