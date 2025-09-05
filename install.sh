@@ -17,6 +17,7 @@ main() {
 	update_config_txt
 	update_profile
 	update_ld_conf
+    check_cache_for_install_path
 	create_svxlink_service
 	create_svxlink_conf
 	create_module_echolink_conf
@@ -144,12 +145,109 @@ update_ld_conf() {
         echo "$default_install_path/lib" | sudo tee "$conf_file" >/dev/null
         dialog --title "Library Path" --infobox "Running ldconfig to refresh cache..." 8 50
         # run silently, log output to trace
-        sudo ldconfig -v 
+        sudo ldconfig
 # >> /var/log/svxlink-install/install_trace.log 2>&1
         dialog --title "Library Path" --msgbox "Added to ld.so.conf:\n$default_install_path/lib" 10 60
     fi
     
 }
+#=========================================================================================
+
+
+check_cache_for_install_path() {
+
+# Requires: dialog, grep, find, (strings optional)
+
+# Check the current dynamic linker cache (/etc/ld.so.cache) for entries
+# under "$install_path_svxlink/lib" WITHOUT running ldconfig.
+# Dialog-only messaging on failures; success is silent (exit 0).
+# Returns:
+#   0 = cached (OK)
+#   2 = not found in cache
+#   3 = cannot read /etc/ld.so.cache
+#   4 = library dir missing or no *.so* files present
+  local base="${install_path_svxlink:-/opt/mysvxlink}"
+  local dir="$base/lib"
+  local cache="/etc/ld.so.cache"
+
+  # Ensure dialog exists; if not, we can't show anything.
+  command -v dialog >/dev/null 2>&1 || return 99
+
+  if [[ ! -d "$dir" ]]; then
+    dialog --title "Error" --msgbox "Directory not found:\n$dir" 9 70
+    return 4
+  fi
+
+  # Collect library filenames to cross-check in the cache
+  mapfile -t libs < <(find "$dir" -maxdepth 1 -type f -name '*.so*' -printf '%f\n' 2>/dev/null)
+  if (( ${#libs[@]} == 0 )); then
+    dialog --title "Error" --msgbox "No shared libraries (*.so*) found in:\n$dir" 9 72
+    return 4
+  fi
+
+  if [[ ! -r "$cache" ]]; then
+    dialog --title "Error" --msgbox "Cannot read:\n$cache\n\nCannot verify the dynamic linker cache." 10 72
+    return 3
+  fi
+
+  # Prefer 'strings' for scanning the binary cache; fall back to grep -a
+  if command -v strings >/dev/null 2>&1; then
+    if strings -- "$cache" | grep -Fq -- "$dir/"; then
+      return 0
+    fi
+    for so in "${libs[@]}"; do
+      if strings -- "$cache" | grep -F "$so" | grep -Fq -- "$dir/"; then
+        return 0
+      fi
+    done
+  else
+    if grep -aFq -- "$dir/" -- "$cache"; then
+      return 0
+    fi
+    for so in "${libs[@]}"; do
+      if grep -aF "$so" -- "$cache" | grep -Fq -- "$dir/"; then
+        return 0
+      fi
+    done
+  fi
+
+  dialog --title "ld.so cache check" --msgbox \
+"Not found in the dynamic linker cache:\n  $dir\n\nAdd it to /etc/ld.so.conf.d/ and run:\n  sudo ldconfig" 12 80
+  return 2
+}
+
+# OPTIONAL: Check if the path is configured for future cache updates.
+# Shows a dialog only when NOT configured; success is silent.
+# Returns: 0 = configured, 1 = not configured
+check_ldconf_for_install_path() {
+  local base="${install_path_svxlink:-/opt/mysvxlink}"
+  local dir="$base/lib"
+
+  command -v dialog >/dev/null 2>&1 || return 99
+
+  shopt -s nullglob
+  local files=(/etc/ld.so.conf /etc/ld.so.conf.d/*.conf)
+  shopt -u nullglob
+
+  if ! grep -Fqs -- "$dir" "${files[@]}" 2>/dev/null; then
+    dialog --title "Not configured" --msgbox \
+"Library path not present in ld.so configuration:\n  $dir\n\nAdd a file like:\n  /etc/ld.so.conf.d/mysvxlink.conf\nwith the line:\n  $dir\nthen run:\n  sudo ldconfig" 14 82
+    return 1
+  fi
+  return 0
+}
+
+# --- Example usage in your installer ---
+# install_path_svxlink="/opt/mysvxlink"   # set elsewhere in your script
+
+# Check current cache (no ldconfig run):
+if ! check_cache_for_install_path; then
+  # Optionally also ensure it's configured for next time:
+  check_ldconf_for_install_path
+  exit $?
+fi
+
+
 #==========================================================================================
 create_svxlink_service() {
 
