@@ -71,7 +71,7 @@ check_cmake_and_packages() {
         count=0
         {
             for pkg in "${packages[@]}"; do
-                count=$((count+1))
+                count=$((count+5))
                 percent=$(( count * 100 / total ))
                 echo "XXX"; echo "$percent"; echo "Installing $pkg ($count of $total)"; echo "XXX"
                 sudo apt-get install -y "$pkg" > /dev/null 2>&1
