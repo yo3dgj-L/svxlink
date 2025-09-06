@@ -13,10 +13,11 @@ main() {
     welcome_text
     ask_paths
 	ask_svxlink_remote
+    copy_qsoimpl_if_remote
+	ensure_svxlink_user
     ask_sa818_hardware
     check_cmake_and_packages
     check_libssl
-    ensure_svxlink_user
     prepare_build
     run_make
     run_make_doc
@@ -99,10 +100,24 @@ check_libssl() {
 }
 
 #=========================================================================================
+
+#=========================================================================================
 ensure_svxlink_user() {
     dialog --title "User Setup" --infobox "Checking if user 'svxlink' exists..." 8 50
     sleep 1
 
+    # Determine if full setup should run (based on ask_svxlink_remote)
+    local ini_file="${base_source_path:-$(echo "$default_source_path" | awk -F/ '{print "/"$2"/"$3}')}/install_path.ini"
+    local USE_REMOTE=0
+    if [[ -f "$ini_file" ]]; then
+        # shellcheck disable=SC1090
+        . "$ini_file"    # loads use_svxlink_remote=0/1
+        [[ "${use_svxlink_remote:-0}" == "1" ]] && USE_REMOTE=1
+    elif [[ "${USE_SVXLINK_REMOTE:-}" == "1" ]]; then
+        USE_REMOTE=1
+    fi
+
+    # Always: create/update 'svxlink' user and groups
     if id "svxlink" &>/dev/null; then
         sudo usermod -aG audio,plugdev,gpio,dialout svxlink
         dialog --title "User Setup" --msgbox "User 'svxlink' exists.\nGroups updated." 10 60
@@ -111,7 +126,13 @@ ensure_svxlink_user() {
         dialog --title "User Setup" --msgbox "User 'svxlink' created and added to groups." 10 60
     fi
 
-    # Ask whether to set/change a password for svxlink
+    # If Remote app not selected, stop here
+    if [[ $USE_REMOTE -ne 1 ]]; then
+        clear
+        return
+    fi
+
+    # Full flow when Remote app = YES
     dialog --title "Set Password" --yesno "Would you like to set or change the password for user 'svxlink' now?" 9 70
     if [[ $? -eq 0 ]]; then
         while true; do
@@ -132,7 +153,6 @@ ensure_svxlink_user() {
                 continue
             fi
 
-            # Set the password without echoing it anywhere
             if echo "svxlink:$PASS1" | sudo chpasswd; then
                 dialog --title "Password" --msgbox "Password set for user 'svxlink'." 8 50
             else
@@ -143,7 +163,6 @@ ensure_svxlink_user() {
         done
     fi
 
-    # Add svxlink to sudoers via a dedicated file and validate with visudo
     dialog --title "Sudoers" --infobox "Adding 'svxlink' to sudoers (NOPASSWD)..." 8 60
     sleep 1
 
@@ -151,7 +170,6 @@ ensure_svxlink_user() {
     echo "svxlink ALL=(ALL) NOPASSWD:ALL" > "$tmpfile"
 
     if sudo visudo -cf "$tmpfile" >/dev/null 2>&1; then
-        # Install with correct ownership and permissions
         sudo install -m 440 -o root -g root "$tmpfile" /etc/sudoers.d/svxlink
         dialog --title "Sudoers" --msgbox "Installed /etc/sudoers.d/svxlink:\nsvxlink ALL=(ALL) NOPASSWD:ALL" 10 70
     else
@@ -161,6 +179,8 @@ ensure_svxlink_user() {
 
     clear
 }
+#=========================================================================================
+
 
 
 #=========================================================================================
@@ -458,6 +478,68 @@ ask_svxlink_remote() {
     fi
 
     dialog --title "Saved" --msgbox "Saved to $ini_file:\n  use_svxlink_remote=${USE_SVXLINK_REMOTE}\n  echolink_info_to_phone=${ECHOLINK_INFO_TO_PHONE}" 10 75
+    clear
+}
+#=========================================================================================
+copy_qsoimpl_if_remote() {
+    # Read choice saved by ask_svxlink_remote
+    local ini_file="${base_source_path:-$(echo "$default_source_path" | awk -F/ '{print "/"$2"/"$3}')}/install_path.ini"
+    local use_remote=""
+
+    if [[ -f "$ini_file" ]]; then
+        use_remote=$(grep -E '^use_svxlink_remote=' "$ini_file" | tail -n1 | cut -d= -f2)
+    elif [[ -n "${USE_SVXLINK_REMOTE:-}" ]]; then
+        use_remote="$USE_SVXLINK_REMOTE"
+    fi
+
+    if [[ "$use_remote" != "1" ]]; then
+        dialog --title "Copy QsoImpl" --msgbox "SvxLink Remote not enabled.\nNo files will be copied." 8 60
+        clear
+        return
+    fi
+
+    # Resolve source root:
+    # Prefer base_source_path set by ask_paths; otherwise derive from default_source_path (e.g., /opt/svxlink).
+    local SRC_ROOT="${base_source_path:-$(echo "$default_source_path" | awk -F/ '{print "/"$2"/"$3}')}"
+    # Build paths relative to the source root
+    local src_dir="$SRC_ROOT/src/svxlink/scripts"
+    local dest_dir="$SRC_ROOT/src/svxlink/modules/echolink"
+    local files=("QsoImpl.h" "QsoImpl.cpp")
+
+    # Validate sources
+    local missing=()
+    for f in "${files[@]}"; do
+        [[ -f "$src_dir/$f" ]] || missing+=("$f")
+    done
+    if [[ ${#missing[@]} -gt 0 ]]; then
+        dialog --title "Copy QsoImpl" --msgbox "Missing source file(s): ${missing[*]}\nExpected in: $src_dir" 10 72
+        clear
+        return 1
+    fi
+
+    # Ensure destination exists
+    sudo mkdir -p "$dest_dir"
+
+    # Overwrite prompt if needed
+    local need_overwrite=0
+    for f in "${files[@]}"; do
+        [[ -f "$dest_dir/$f" ]] && need_overwrite=1
+    done
+    if [[ $need_overwrite -eq 1 ]]; then
+        dialog --title "Overwrite Files?" --yesno "Files already exist in:\n$dest_dir\n\nOverwrite them?" 10 70
+        [[ $? -ne 0 ]] && { dialog --title "Copy QsoImpl" --msgbox "Copy cancelled." 7 40; clear; return; }
+    fi
+
+    # Copy with a gauge
+    {
+        echo "XXX"; echo "20"; echo "Copying QsoImpl.h..."; echo "XXX"
+        sudo cp -f "$src_dir/QsoImpl.h" "$dest_dir/"
+        echo "XXX"; echo "65"; echo "Copying QsoImpl.cpp..."; echo "XXX"
+        sudo cp -f "$src_dir/QsoImpl.cpp" "$dest_dir/"
+        echo "XXX"; echo "100"; echo "Done."; echo "XXX"
+    } | dialog --title "Copy QsoImpl files" --gauge "Working..." 10 60 0
+
+    dialog --title "Copy QsoImpl" --msgbox "Copied files to:\n$dest_dir\n\n- QsoImpl.h\n- QsoImpl.cpp" 11 65
     clear
 }
 
