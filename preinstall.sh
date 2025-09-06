@@ -12,6 +12,7 @@ main() {
     check_dialog
     welcome_text
     ask_paths
+	ask_svxlink_remote
     ask_sa818_hardware
     check_cmake_and_packages
     check_libssl
@@ -414,6 +415,50 @@ EOF
     fi
 
     dialog --title "Bash Aliases" --msgbox "Aliases file created at:\n$aliases_file\n\nThe following commands are now available:\n  svxlog, svxconf, svxstart, svxstop, svxstatus, svxrestart, down, restart\n\To activate immediately, run:\n  source ~/.bashrc\n\nOr restart your shell." 18 70
+}
+
+#=========================================================================================
+ask_svxlink_remote() {
+    # 1) Ask about SvxLink Remote app
+    dialog --title "SvxLink Remote (Android)" \
+           --yesno "Do you plan to use the SvxLink Remote Android app?" 9 65
+    if [[ $? -eq 0 ]]; then
+        USE_SVXLINK_REMOTE=1
+
+        # 2) Follow-up: EchoLink connection info to phone?
+        dialog --title "EchoLink Info on Phone" \
+               --yesno "Do you want to receive EchoLink connection information on the phone?" 9 75
+        if [[ $? -eq 0 ]]; then
+            ECHOLINK_INFO_TO_PHONE=1
+        else
+            ECHOLINK_INFO_TO_PHONE=0
+        fi
+    else
+        USE_SVXLINK_REMOTE=0
+        ECHOLINK_INFO_TO_PHONE=0
+    fi
+    export USE_SVXLINK_REMOTE ECHOLINK_INFO_TO_PHONE
+
+    # Persist into install_path.ini (created earlier by ask_paths)
+    local ini_file="$base_source_path/install_path.ini"
+    sudo mkdir -p "$base_source_path"
+    sudo touch "$ini_file"
+
+    # Update or append keys
+    if sudo grep -Eq '^[[:space:]]*use_svxlink_remote=' "$ini_file"; then
+        sudo sed -i -E "s|^[[:space:]]*use_svxlink_remote=.*|use_svxlink_remote=${USE_SVXLINK_REMOTE}|" "$ini_file"
+    else
+        echo "use_svxlink_remote=${USE_SVXLINK_REMOTE}" | sudo tee -a "$ini_file" >/dev/null
+    fi
+
+    if sudo grep -Eq '^[[:space:]]*echolink_info_to_phone=' "$ini_file"; then
+        sudo sed -i -E "s|^[[:space:]]*echolink_info_to_phone=.*|echolink_info_to_phone=${ECHOLINK_INFO_TO_PHONE}|" "$ini_file"
+    else
+        echo "echolink_info_to_phone=${ECHOLINK_INFO_TO_PHONE}" | sudo tee -a "$ini_file" >/dev/null
+    fi
+
+    dialog --title "Saved" --msgbox "Saved to $ini_file:\n  use_svxlink_remote=${USE_SVXLINK_REMOTE}\n  echolink_info_to_phone=${ECHOLINK_INFO_TO_PHONE}" 10 75
+    clear
 }
 
 #=========================================================================================
