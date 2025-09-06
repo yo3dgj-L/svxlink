@@ -12,8 +12,13 @@ main() {
 	get_install_path
 	dialog --title "Install Path" --msgbox "Installation path detected:\n\n$default_install_path" 10 60
 
+	source "$base_source_path/install_path.ini"
+if [[ "${use_svxlink_remote:-0}" -eq 1 ]]; then
+    # enable Remote-specific tweaks here
 	copy_status_message
-        copy_proxy_sounds
+fi
+ 
+    copy_proxy_sounds
 	update_config_txt
 	update_profile
 	update_ld_conf
