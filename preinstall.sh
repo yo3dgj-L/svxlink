@@ -101,15 +101,66 @@ check_libssl() {
 ensure_svxlink_user() {
     dialog --title "User Setup" --infobox "Checking if user 'svxlink' exists..." 8 50
     sleep 1
+
     if id "svxlink" &>/dev/null; then
         sudo usermod -aG audio,plugdev,gpio,dialout svxlink
         dialog --title "User Setup" --msgbox "User 'svxlink' exists.\nGroups updated." 10 60
     else
-        sudo useradd -m -G audio,plugdev,gpio,dialout svxlink
+        sudo useradd -m -s /bin/bash -G audio,plugdev,gpio,dialout svxlink
         dialog --title "User Setup" --msgbox "User 'svxlink' created and added to groups." 10 60
     fi
+
+    # Ask whether to set/change a password for svxlink
+    dialog --title "Set Password" --yesno "Would you like to set or change the password for user 'svxlink' now?" 9 70
+    if [[ $? -eq 0 ]]; then
+        while true; do
+            PASS1=$(dialog --insecure --passwordbox "Enter a password for 'svxlink':" 10 60 3>&1 1>&2 2>&3 3>&-)
+            rc=$?
+            [[ $rc -ne 0 ]] && break
+
+            PASS2=$(dialog --insecure --passwordbox "Confirm the password:" 10 60 3>&1 1>&2 2>&3 3>&-)
+            rc=$?
+            [[ $rc -ne 0 ]] && break
+
+            if [[ -z "$PASS1" ]]; then
+                dialog --title "Password" --msgbox "Password cannot be empty. Please try again." 8 60
+                continue
+            fi
+            if [[ "$PASS1" != "$PASS2" ]]; then
+                dialog --title "Password" --msgbox "Passwords do not match. Please try again." 8 60
+                continue
+            fi
+
+            # Set the password without echoing it anywhere
+            if echo "svxlink:$PASS1" | sudo chpasswd; then
+                dialog --title "Password" --msgbox "Password set for user 'svxlink'." 8 50
+            else
+                dialog --title "Password" --msgbox "Failed to set password for 'svxlink'." 8 60
+            fi
+            unset PASS1 PASS2
+            break
+        done
+    fi
+
+    # Add svxlink to sudoers via a dedicated file and validate with visudo
+    dialog --title "Sudoers" --infobox "Adding 'svxlink' to sudoers (NOPASSWD)..." 8 60
+    sleep 1
+
+    tmpfile=$(mktemp)
+    echo "svxlink ALL=(ALL) NOPASSWD:ALL" > "$tmpfile"
+
+    if sudo visudo -cf "$tmpfile" >/dev/null 2>&1; then
+        # Install with correct ownership and permissions
+        sudo install -m 440 -o root -g root "$tmpfile" /etc/sudoers.d/svxlink
+        dialog --title "Sudoers" --msgbox "Installed /etc/sudoers.d/svxlink:\nsvxlink ALL=(ALL) NOPASSWD:ALL" 10 70
+    else
+        dialog --title "Sudoers" --msgbox "Validation failed for sudoers entry. No changes applied." 9 70
+    fi
+    rm -f "$tmpfile"
+
     clear
 }
+
 
 #=========================================================================================
 ask_paths() {
