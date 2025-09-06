@@ -20,6 +20,7 @@ main() {
  	create_svxlink_service
 	create_svxlink_conf
 	create_module_echolink_conf
+    ask_enable_metar_info
 	create_log_dir
 	fix_sa818_menu_paths
 
@@ -711,9 +712,88 @@ to:
   $dst" 10 70
 }
 
+#=========================================================================================
+ask_enable_metar_info() {
+    # Ask whether to enable ModuleMetarInfo
+    dialog --title "METAR Information" --yesno "Enable METAR information (ModuleMetarInfo)?" 8 60
+    if [[ $? -ne 0 ]]; then
+        clear
+        return
+    fi
+
+    # Resolve config paths (prefer the chosen install path if set, else default)
+    local root_path="${install_path_svxlink:-$default_install_path}"
+    local svx_dir="$root_path/svxlink"
+    local svx_conf="$svx_dir/svxlink.conf"
+    local d_dir="$svx_dir/svxlink.d"
+    local metar_conf="$d_dir/ModuleMetarInfo.conf"
+
+    sudo mkdir -p "$d_dir"
+
+    # Ensure svxlink.conf exists
+    if [[ ! -f "$svx_conf" ]]; then
+        sudo mkdir -p "$svx_dir"
+        echo "MODULES=ModuleHelp,ModuleParrot,ModuleEchoLink" | sudo tee "$svx_conf" >/dev/null
+    fi
+
+    # Add ModuleMetarInfo to MODULES= line if not already present
+    if grep -Eq '^[[:space:]]*MODULES[[:space:]]*=.*ModuleMetarInfo' "$svx_conf"; then
+        : # already present
+    else
+        sudo sed -i -E 's/^[[:space:]]*(MODULES[[:space:]]*=[[:space:]]*)(.*)$/\1\2,ModuleMetarInfo/' "$svx_conf"
+        # If the sed didn't match (no MODULES line), append a sane default
+        if ! grep -Eq '^[[:space:]]*MODULES[[:space:]]*=' "$svx_conf"; then
+            echo "MODULES=ModuleHelp,ModuleParrot,ModuleEchoLink,ModuleMetarInfo" | sudo tee -a "$svx_conf" >/dev/null
+        fi
+    fi
+
+    # Ask for airport code
+    local code
+    while true; do
+        code=$(dialog --title "Airport Code" --inputbox "Enter ICAO airport code (e.g., LROP, EBBR):" 10 60 "LROP" 3>&1 1>&2 2>&3 3>&-)
+        [[ $? -ne 0 ]] && clear && return
+        # Normalize to uppercase A–Z/0–9, typical ICAO is 4 letters but accept 3–6 to be lenient
+        code=$(echo "$code" | tr '[:lower:]' '[:upper:]' | tr -cd 'A-Z0-9')
+        if [[ ${#code} -lt 3 || ${#code} -gt 6 ]]; then
+            dialog --title "Invalid Code" --msgbox "Please enter a valid code (usually 4 letters, e.g., LROP)." 8 60
+            continue
+        fi
+        break
+    done
+
+    # Write ModuleMetarInfo.conf template and replace LROP with user code
+    sudo tee "$metar_conf" >/dev/null <<'EOF'
+[ModuleMetarInfo]
+NAME=MetarInfo
+ID=5
+TIMEOUT=120
+LONGMESSAGES=0
+REMARKS=0
+
+# Option A — NOAA TXT (simple & reliable)
+#TYPE=TXT
+#SERVER=https://tgftp.nws.noaa.gov
+#LINK=/data/observations/metar/stations/
+
+# Option B — AWC XML (richer)
+TYPE=XML
+SERVER=https://aviationweather.gov
+LINK=/cgi-bin/data/dataserver.php?requestType=retrieve&dataSource=metars&hoursBeforeNow=3&mostRecent=true&stationString=
+
+AIRPORTS=ESSB,EDDP,SKSM,EDDS,EDDM,EDDF,EBBR,LROP
+STARTDEFAULT=LROP
+DEBUG=0
+EOF
+    sudo sed -i "s/LROP/$code/g" "$metar_conf"
+
+    dialog --title "METAR Information" --msgbox "Enabled ModuleMetarInfo and set airport to '$code'.\n\n- Updated: $svx_conf\n- Wrote:   $metar_conf" 12 70
+    clear
+}
+#=========================================================================================
+
+
+
 #=====================================================================================================
-
-
 
 # --- RUN MAIN ---
 main
